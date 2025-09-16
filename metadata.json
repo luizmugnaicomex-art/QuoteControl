@@ -1,0 +1,5 @@
+{
+  "name": "Quote Control",
+  "description": "Dashboard for controlling import quotas",
+  "requestFramePermissions": []
+}

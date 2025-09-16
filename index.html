@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-lang-key="pageTitle">Dashboard de Controle de Quotas de Importação</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="index.css">
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="p-4 md:p-8">
+    <div id="dashboard-container" class="max-w-screen-2xl mx-auto">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+            <div>
+                <h1 class="text-3xl font-extrabold text-gray-800" data-lang-key="headerTitle">DASHBOARD DE CONTROLE DE QUOTAS</h1>
+                <p id="last-update" class="text-gray-500 mt-1" data-lang-key="promptToUpload">Carregue a planilha de prioridade de registro para começar</p>
+            </div>
+            <div class="flex items-center space-x-4 mt-4 md:mt-0">
+                <div class="flex items-center space-x-2 mr-4">
+                    <button id="lang-pt-btn" class="px-3 py-1 text-sm font-semibold rounded-md focus:outline-none">PT-BR</button>
+                    <button id="lang-zh-btn" class="px-3 py-1 text-sm font-semibold rounded-md focus:outline-none">中文</button>
+                </div>
+                <button id="export-pdf-btn" class="cursor-pointer bg-gray-600 text-white px-5 py-2.5 rounded-lg shadow-md hover:bg-gray-700 transition-all duration-300 font-semibold flex items-center">
+                    <i class="fas fa-file-pdf mr-2"></i> <span data-lang-key="exportPDF">Exportar PDF</span>
+                </button>
+                 <button id="export-csv-btn" class="cursor-pointer bg-green-600 text-white px-5 py-2.5 rounded-lg shadow-md hover:bg-green-700 transition-all duration-300 font-semibold flex items-center">
+                    <i class="fas fa-file-alt mr-2"></i> <span data-lang-key="exportCSV">Exportar CSV</span>
+                </button>
+                <label for="file-upload" class="cursor-pointer bg-blue-600 text-white px-5 py-2.5 rounded-lg shadow-md hover:bg-blue-700 transition-all duration-300 font-semibold flex items-center">
+                    <i class="fas fa-upload mr-2"></i> <span data-lang-key="uploadSheet">Carregar Planilha</span>
+                </label>
+                <input id="file-upload" type="file" class="hidden" accept=".xlsx, .xls">
+            </div>
+        </header>
+
+        <!-- KPIs -->
+        <div id="kpi-container" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            <!-- EV Quota -->
+            <div class="kpi-card p-4 col-span-1">
+                <h3 class="text-md font-bold text-gray-800 flex items-center mb-2"><i class="fas fa-car-battery mr-3 text-green-500"></i><span data-lang-key="quotaEV">QUOTA EV</span></h3>
+                <div class="grid grid-cols-2 gap-x-4">
+                    <!-- USD Column -->
+                    <div class="space-y-2 text-right">
+                        <div>
+                            <p class="text-xs font-medium text-gray-500" data-lang-key="totalUSD">Total (USD)</p>
+                            <p id="total-ev" class="text-lg font-bold text-gray-700">$ 0,00</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-gray-500" data-lang-key="usedUSD">Utilizado (USD)</p>
+                            <p id="used-ev" class="text-lg font-bold text-red-600">$ 0,00</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-gray-500" data-lang-key="pendingToUseUSD">Pendente de Uso (USD)</p>
+                            <p id="pending-use-ev" class="text-lg font-bold text-orange-500">$ 0,00</p>
+                        </div>
+                        <div class="border-t pt-2 mt-2">
+                            <p class="text-sm font-bold text-gray-500" data-lang-key="balanceUSD">SALDO (USD)</p>
+                            <p id="balance-ev" class="text-xl font-extrabold text-green-600">$ 0,00</p>
+                        </div>
+                    </div>
+                    <!-- Vehicles Column -->
+                    <div class="space-y-2 text-right">
+                         <div>
+                            <div class="flex items-center justify-end space-x-1">
+                                <p class="text-xs font-medium text-gray-500" data-lang-key="totalVehicles">Total (Veículos)</p>
+                                <div id="ev-vehicle-alert" class="hidden relative vehicle-alert">
+                                    <i class="fas fa-exclamation-triangle text-yellow-500 cursor-help"></i>
+                                    <div id="ev-vehicle-tooltip" class="vehicle-alert-tooltip"></div>
+                                </div>
+                            </div>
+                            <p id="total-vehicles-ev" class="text-lg font-bold text-gray-700">0</p>
+                        </div>
+                         <div>
+                            <p class="text-xs font-medium text-gray-500" data-lang-key="usedVehicles">Utilizado (Veículos)</p>
+                            <p id="used-vehicles-ev" class="text-lg font-bold text-red-600">0</p>
+                        </div>
+                         <div>
+                            <p class="text-xs font-medium text-gray-500" data-lang-key="pendingToUseVehicles">Pendente de Uso (Veículos)</p>
+                            <p id="pending-use-vehicles-ev" class="text-lg font-bold text-orange-500">0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PHEV Quota -->
+            <div class="kpi-card p-4 col-span-1">
+                <h3 class="text-md font-bold text-gray-800 flex items-center mb-2"><i class="fas fa-gas-pump mr-3 text-blue-500"></i><span data-lang-key="quotaPHEV">QUOTA PHEV</span></h3>
+                <div class="grid grid-cols-2 gap-x-4">
+                    <!-- USD Column -->
+                    <div class="space-y-2 text-right">
+                        <div>
+                            <p class="text-xs font-medium text-gray-500" data-lang-key="totalUSD">Total (USD)</p>
+                            <p id="total-phev" class="text-lg font-bold text-gray-700">$ 0,00</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-gray-500" data-lang-key="usedUSD">Utilizado (USD)</p>
+                            <p id="used-phev" class="text-lg font-bold text-red-600">$ 0,00</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-gray-500" data-lang-key="pendingToUseUSD">Pendente de Uso (USD)</p>
+                            <p id="pending-use-phev" class="text-lg font-bold text-orange-500">$ 0,00</p>
+                        </div>
+                        <div class="border-t pt-2 mt-2">
+                            <p class="text-sm font-bold text-gray-500" data-lang-key="balanceUSD">SALDO (USD)</p>
+                            <p id="balance-phev" class="text-xl font-extrabold text-green-600">$ 0,00</p>
+                        </div>
+                    </div>
+                    <!-- Vehicles Column -->
+                    <div class="space-y-2 text-right">
+                        <div>
+                            <div class="flex items-center justify-end space-x-1">
+                                <p class="text-xs font-medium text-gray-500" data-lang-key="totalVehicles">Total (Veículos)</p>
+                                 <div id="phev-vehicle-alert" class="hidden relative vehicle-alert">
+                                    <i class="fas fa-exclamation-triangle text-yellow-500 cursor-help"></i>
+                                    <div id="phev-vehicle-tooltip" class="vehicle-alert-tooltip"></div>
+                                </div>
+                            </div>
+                            <p id="total-vehicles-phev" class="text-lg font-bold text-gray-700">0</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-gray-500" data-lang-key="usedVehicles">Utilizado (Veículos)</p>
+                            <p id="used-vehicles-phev" class="text-lg font-bold text-red-600">0</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-gray-500" data-lang-key="pendingToUseVehicles">Pendente de Uso (Veículos)</p>
+                            <p id="pending-use-vehicles-phev" class="text-lg font-bold text-orange-500">0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Summary Card -->
+            <div class="kpi-card p-5 col-span-1 space-y-4">
+                 <h3 class="text-lg font-bold text-gray-800 flex items-center"><i class="fas fa-chart-pie mr-3 text-gray-500"></i><span data-lang-key="summary">Resumo Geral</span></h3>
+                 <div>
+                    <p class="text-sm font-medium text-gray-500" data-lang-key="totalOrders">Total de Pedidos na Planilha</p>
+                    <p id="total-requests" class="text-2xl font-extrabold text-gray-700">0</p>
+                 </div>
+                 <div>
+                    <p class="text-sm font-medium text-gray-500" data-lang-key="usedOrders">Pedidos Utilizados (DI Registrada)</p>
+                    <p id="used-requests" class="text-2xl font-extrabold text-gray-700">0</p>
+                 </div>
+                 <div>
+                    <p class="text-sm font-medium text-gray-500" data-lang-key="pendingOrders">Pedidos em Aberto / Pendentes</p>
+                    <p id="pending-requests" class="text-2xl font-extrabold text-gray-700">0</p>
+                 </div>
+            </div>
+
+            <!-- Integral Summary Card -->
+            <div class="kpi-card p-5 col-span-1 space-y-4">
+                 <h3 class="text-lg font-bold text-gray-800 flex items-center"><i class="fas fa-file-contract mr-3 text-slate-500"></i><span data-lang-key="integralSummary">Resumo - Reg. Integral</span></h3>
+                 <div>
+                    <p class="text-sm font-medium text-gray-500" data-lang-key="integralOrders">Total Pedidos (Integral)</p>
+                    <p id="integral-requests" class="text-2xl font-extrabold text-gray-700">0</p>
+                 </div>
+                 <div>
+                    <p class="text-sm font-medium text-gray-500" data-lang-key="integralTotalValue">Valor Total (USD)</p>
+                    <p id="integral-value" class="text-2xl font-extrabold text-gray-700">$ 0,00</p>
+                 </div>
+                 <div>
+                    <p class="text-sm font-medium text-gray-500" data-lang-key="integralTotalVehicles">Total Veículos (Integral)</p>
+                    <p id="integral-vehicles" class="text-2xl font-extrabold text-gray-700">0</p>
+                 </div>
+            </div>
+        </div>
+        
+        <!-- Charts -->
+        <div id="charts-container" class="hidden bg-white p-6 rounded-lg shadow-md mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center" data-lang-key="quotaVisualization">Visualização das Quotas (USD)</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                <div class="h-64 mx-auto">
+                    <h3 class="text-lg font-semibold text-center text-gray-700 mb-2" data-lang-key="quotaEV">QUOTA EV</h3>
+                    <canvas id="ev-chart"></canvas>
+                </div>
+                <div class="h-64 mx-auto">
+                    <h3 class="text-lg font-semibold text-center text-gray-700 mb-2" data-lang-key="quotaPHEV">QUOTA PHEV</h3>
+                    <canvas id="phev-chart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search and Content -->
+        <div id="dashboard-content" class="hidden">
+            <!-- Search bar -->
+            <div class="mb-6 relative">
+                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="fas fa-search text-gray-400"></i>
+                </div>
+                <input type="search" id="li-search-input" data-lang-key="filterByLIPO" placeholder="Filtrar por LI ou PO..." class="w-full pl-10 pr-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            
+            <!-- Lists -->
+            <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4 pb-2 border-b-2 border-gray-300" data-lang-key="pendingOrdersList">Pedidos em Aberto / Pendentes</h2>
+                    <div id="pending-list" class="space-y-3 max-h-[60vh] overflow-y-auto pr-2"></div>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4 pb-2 border-b-2 border-gray-300" data-lang-key="usedOrdersList">Pedidos Utilizados (DI Registrada)</h2>
+                    <div id="used-list" class="space-y-3 max-h-[60vh] overflow-y-auto pr-2"></div>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4 pb-2 border-b-2 border-gray-300" data-lang-key="integralOrdersList">Pedidos com Registro Integral</h2>
+                    <div id="integral-list" class="space-y-3 max-h-[60vh] overflow-y-auto pr-2"></div>
+                </div>
+            </main>
+        </div>
+        
+        <div id="placeholder" class="text-center py-20 bg-white rounded-lg shadow">
+            <i class="fas fa-file-invoice-dollar text-6xl text-gray-300 mb-4" aria-hidden="true"></i>
+            <h2 class="text-2xl font-semibold text-gray-600" data-lang-key="waitingForFile">Aguardando arquivo...</h2>
+            <p class="text-gray-400" data-lang-key="selectFileToStart">Selecione a planilha de prioridade de registro para iniciar.</p>
+        </div>
+    </div>
+
+    <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+    
+    <script type="module" src="index.tsx"></script>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>

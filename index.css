@@ -1,0 +1,44 @@
+body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
+.kpi-card {
+    background-color: #ffffff;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    transition: transform 0.2s ease;
+}
+.kpi-card:hover { transform: translateY(-4px); }
+.item-card {
+    background-color: #ffffff;
+    border-radius: 0.5rem;
+    border-left-width: 4px;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+}
+.toast-container { position: fixed; top: 1.5rem; right: 1.5rem; z-index: 9999; }
+.toast { animation: slide-in 0.5s forwards, fade-out 0.5s 4.5s forwards; }
+@keyframes slide-in { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes fade-out { from { opacity: 1; } to { opacity: 0; transform: translateX(100%); } }
+
+/* Vehicle Alert Tooltip Styles */
+.vehicle-alert .vehicle-alert-tooltip {
+    visibility: hidden;
+    width: 220px;
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 8px;
+    position: absolute;
+    z-index: 10;
+    bottom: 150%;
+    left: 50%;
+    margin-left: -110px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    font-size: 0.8rem;
+    font-weight: normal;
+    pointer-events: none;
+}
+
+.vehicle-alert:hover .vehicle-alert-tooltip {
+    visibility: visible;
+    opacity: 1;
+}
