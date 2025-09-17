@@ -1,16 +1,32 @@
-// Make libraries available globally from CDN
+// --- DECLARAÇÕES GLOBAIS ---
 declare var XLSX: any;
 declare var jspdf: any;
 declare var html2canvas: any;
+declare const firebase: any; // Adicionado para o Firebase
 
-// Resolve ReferenceError for CDN libraries in a module script by assigning them to constants from the window object.
+// Resolve ReferenceError para bibliotecas CDN
 const Chart = (window as any).Chart;
 const ChartDataLabels = (window as any).ChartDataLabels;
 
 
+// --- CONFIGURAÇÃO E INICIALIZAÇÃO DO FIREBASE ---
+const firebaseConfig = {
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID
+};
+
+// Inicializa o Firebase e o Firestore
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+
 // --- TYPE DEFINITIONS ---
 interface QuotaData {
-    __id: number; // Internal unique ID for tracking clicks
+    __id: number;
     [key: string]: string | number | null;
     'DATA REGISTRO DI': string | null;
     'REGISTRATION_TYPE'?: 'QUOTA' | 'INTEGRAL' | null;
@@ -86,7 +102,7 @@ const translations = {
         loadingProcess: 'Processando...',
         loadingGenerate: 'Gerando...',
         loadingExport: 'Exportando...',
-        lastUpdate: (sheetName: string, date: string) => `Dados de "${sheetName}" | Carregado em: ${date}`,
+        lastUpdate: (sheetName: string, date: string) => `Dados de "${sheetName}" | Sincronizado em: ${date}`,
         noItemsFound: 'Nenhum item encontrado.',
         vehicleAlertTooltip: (count: number) => `Atenção: ${count} pedido(s) na planilha está(ão) com 0 veículos. Os totais de veículos podem estar incorretos.`
     },
@@ -151,7 +167,7 @@ const translations = {
         loadingProcess: '处理中...',
         loadingGenerate: '生成中...',
         loadingExport: '导出中...',
-        lastUpdate: (sheetName: string, date: string) => `数据来源："${sheetName}" | 加载于：${date}`,
+        lastUpdate: (sheetName: string, date: string) => `数据来源："${sheetName}" | 同步于：${date}`,
         noItemsFound: '未找到任何项目。',
         vehicleAlertTooltip: (count: number) => `注意：电子表格中有 ${count} 个订单的车辆数量为 0。车辆总数可能不正确。`
     }
@@ -214,17 +230,56 @@ let originalData: QuotaData[] = [];
 let evChart: any = null;
 let phevChart: any = null;
 let currentLanguage: 'pt-BR' | 'zh-CN' = 'pt-BR';
-let currentSheetInfo: { name: string, date: Date } | null = null;
+let currentSheetInfo: { name: string, date: string } | null = null; // Date is now string
 
 // Register ChartJS plugins
 Chart.register(ChartDataLabels);
+
+// --- FUNÇÕES DO FIREBASE ---
+const salvarDadosNoFirebase = async (dataToSave: { data: QuotaData[], sheetInfo: { name: string, date: string } | null }) => {
+    try {
+        await db.collection("quoteControl").doc("latestSheet").set(dataToSave);
+        console.log("Dados salvos no Firebase com sucesso!");
+    } catch (e) {
+        console.error("Erro ao salvar dados no Firebase: ", e);
+    }
+};
+
+const escutarMudancasEmTempoReal = () => {
+    db.collection("quoteControl").doc("latestSheet").onSnapshot((doc: any) => {
+        if (doc.exists) {
+            const firestoreData = doc.data();
+            originalData = firestoreData.data || [];
+            currentSheetInfo = firestoreData.sheetInfo || null;
+
+            processAndRenderAll(originalData);
+            
+            // Exibir o dashboard se houver dados
+            UIElements.kpiContainer.classList.remove('hidden');
+            UIElements.dashboardContent.classList.remove('hidden');
+            UIElements.chartsContainer.classList.remove('hidden');
+            UIElements.placeholder.classList.add('hidden');
+            
+            if (currentSheetInfo) {
+                const date = new Date(currentSheetInfo.date);
+                UIElements.lastUpdate.textContent = translations[currentLanguage].lastUpdate(currentSheetInfo.name, date.toLocaleString(currentLanguage));
+            }
+            
+            showToast('toastLoaded', 'success');
+
+        } else {
+            console.log("Nenhum dado encontrado no Firebase. Aguardando upload.");
+            resetUI();
+        }
+    });
+};
+
 
 // --- LANGUAGE & FORMATTING FUNCTIONS ---
 
 function setLanguage(lang: 'pt-BR' | 'zh-CN') {
     currentLanguage = lang;
     
-    // Update button styles
     UIElements.langPtBtn.classList.toggle('bg-blue-600', lang === 'pt-BR');
     UIElements.langPtBtn.classList.toggle('text-white', lang === 'pt-BR');
     UIElements.langPtBtn.classList.toggle('ring-2', lang === 'pt-BR');
@@ -239,14 +294,13 @@ function setLanguage(lang: 'pt-BR' | 'zh-CN') {
     UIElements.langZhBtn.classList.toggle('bg-gray-200', lang !== 'zh-CN');
     UIElements.langZhBtn.classList.toggle('text-gray-700', lang !== 'zh-CN');
 
-    // Update static text from data-lang-key attributes
     const t = translations[currentLanguage];
     document.querySelectorAll('[data-lang-key]').forEach(el => {
         const key = el.getAttribute('data-lang-key') as keyof typeof t;
         if (key && t[key]) {
             const translation = t[key];
             if (typeof translation === 'string') {
-                 if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+                if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
                     el.placeholder = translation;
                 } else {
                     el.textContent = translation;
@@ -257,15 +311,16 @@ function setLanguage(lang: 'pt-BR' | 'zh-CN') {
 
     document.title = t.pageTitle;
 
-    // Re-render dynamic content if data exists
     if (originalData.length > 0) {
         processAndRenderAll(originalData);
         if (currentSheetInfo) {
-            UIElements.lastUpdate.textContent = t.lastUpdate(currentSheetInfo.name, currentSheetInfo.date.toLocaleString(currentLanguage));
+            const date = new Date(currentSheetInfo.date);
+            UIElements.lastUpdate.textContent = t.lastUpdate(currentSheetInfo.name, date.toLocaleString(currentLanguage));
         }
     }
 }
 
+// (O restante das funções: showToast, parseCurrency, formatCurrency, formatNumber... permanecem iguais)
 function showToast(messageKey: keyof typeof translations['pt-BR'], type: 'success' | 'error' = 'success') {
     const message = translations[currentLanguage][messageKey] as string;
     const toast = document.createElement('div');
@@ -320,6 +375,7 @@ function resetUI() {
     UIElements.lastUpdate.textContent = translations[currentLanguage].promptToUpload;
 }
 
+// (renderList, updateCharts, filterAndRenderLists, processAndRenderAll... permanecem praticamente iguais)
 function renderList(container: HTMLElement, items: QuotaData[], isUsed: boolean) {
     container.innerHTML = '';
     const t = translations[currentLanguage];
@@ -596,11 +652,12 @@ function processAndRenderAll(data: QuotaData[]) {
 
 // --- ACTION HANDLERS ---
 function handleRegister(id: number, type: 'QUOTA' | 'INTEGRAL') {
-     const itemIndex = originalData.findIndex(item => item.__id === id);
+    const itemIndex = originalData.findIndex(item => item.__id === id);
     if (itemIndex > -1) {
         originalData[itemIndex]['DATA REGISTRO DI'] = new Date().toLocaleDateString(currentLanguage);
         originalData[itemIndex]['REGISTRATION_TYPE'] = type;
-        processAndRenderAll(originalData);
+        // Salva a alteração no Firebase, que irá disparar a atualização da UI
+        salvarDadosNoFirebase({ data: originalData, sheetInfo: currentSheetInfo });
         showToast('toastRegisterSuccess', 'success');
     } else {
         showToast('toastRegisterError', 'error');
@@ -612,13 +669,15 @@ function handleCancelDI(id: number) {
     if (itemIndex > -1) {
         originalData[itemIndex]['DATA REGISTRO DI'] = null;
         originalData[itemIndex]['REGISTRATION_TYPE'] = null;
-        processAndRenderAll(originalData);
+        // Salva a alteração no Firebase, que irá disparar a atualização da UI
+        salvarDadosNoFirebase({ data: originalData, sheetInfo: currentSheetInfo });
         showToast('toastCancelSuccess', 'success');
     } else {
         showToast('toastRegisterError', 'error');
     }
 }
 
+// (handleExportCSV e o listener do PDF permanecem iguais)
 function handleExportCSV() {
     if (originalData.length === 0) {
         showToast('toastNoDataExport', 'error');
@@ -672,6 +731,7 @@ function handleExportCSV() {
     }
 }
 
+
 // --- EVENT LISTENERS ---
 
 UIElements.fileUpload.addEventListener('change', (event) => {
@@ -683,7 +743,6 @@ UIElements.fileUpload.addEventListener('change', (event) => {
 
     const originalHTML = uploadLabelElement.innerHTML;
     
-    // Set loading state
     uploadLabelElement.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> ${translations[currentLanguage].loadingProcess}`;
     (uploadLabelElement as HTMLLabelElement).style.pointerEvents = 'none';
 
@@ -710,21 +769,17 @@ UIElements.fileUpload.addEventListener('change', (event) => {
                 throw err;
             }
 
-            originalData = jsonData.map((row, index) => ({ 
+            // Prepara os dados para o Firebase
+            const dataToSave = jsonData.map((row, index) => ({ 
                 ...row, 
                 __id: index, 
-                REGISTRATION_TYPE: null // Initialize new property
+                REGISTRATION_TYPE: null
             } as QuotaData));
-            currentSheetInfo = { name: sheetName, date: new Date() };
 
-            processAndRenderAll(originalData);
-            
-            UIElements.kpiContainer.classList.remove('hidden');
-            UIElements.dashboardContent.classList.remove('hidden');
-            UIElements.chartsContainer.classList.remove('hidden');
-            UIElements.placeholder.classList.add('hidden');
-            UIElements.lastUpdate.textContent = translations[currentLanguage].lastUpdate(currentSheetInfo.name, currentSheetInfo.date.toLocaleString(currentLanguage));
-            showToast('toastLoaded', 'success');
+            const sheetInfoToSave = { name: sheetName, date: new Date().toISOString() };
+
+            // Envia os dados para o Firebase. A atualização da UI ocorrerá pelo listener.
+            salvarDadosNoFirebase({ data: dataToSave, sheetInfo: sheetInfoToSave });
 
         } catch (err: any) {
             if (err.name === 'toastNoSheet' || err.name === 'toastEmptySheet') {
@@ -735,7 +790,6 @@ UIElements.fileUpload.addEventListener('change', (event) => {
             console.error("File processing error:", err);
             resetUI();
         } finally {
-            // Restore original state
             uploadLabelElement.innerHTML = originalHTML;
             (uploadLabelElement as HTMLLabelElement).style.pointerEvents = 'auto';
             (event.target as HTMLInputElement).value = '';
@@ -773,7 +827,7 @@ UIElements.exportPdfBtn.addEventListener('click', () => {
     btn.querySelector('span')!.textContent = translations[currentLanguage].loadingGenerate;
     btn.disabled = true;
 
-    html2canvas(UIElements.dashboardContainer, { scale: 2 }) // Increased scale for better quality
+    html2canvas(UIElements.dashboardContainer, { scale: 2 })
         .then((canvas: HTMLCanvasElement) => {
             const imgData = canvas.toDataURL('image/png');
             const { jsPDF } = jspdf;
@@ -810,4 +864,6 @@ UIElements.langZhBtn.addEventListener('click', () => setLanguage('zh-CN'));
 // Initial Load
 document.addEventListener('DOMContentLoaded', () => {
     setLanguage('pt-BR');
+    // Inicia o listener do Firebase para receber dados em tempo real
+    escutarMudancasEmTempoReal();
 });
