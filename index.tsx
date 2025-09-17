@@ -52,7 +52,9 @@ const translations = {
         quotaPHEV: 'QUOTA PHEV',
         totalUSD: 'Total (USD)',
         usedUSD: 'Utilizado (USD)',
+        usedVehicles: 'Utilizado (Veículos)',
         pendingToUseUSD: 'Pendente de Uso (USD)',
+        pendingToUseVehicles: 'Pendente de Uso (Veículos)',
         balanceUSD: 'SALDO (USD)',
         summary: 'Resumo Geral',
         totalOrders: 'Total de Pedidos na Planilha',
@@ -113,7 +115,9 @@ const translations = {
         quotaPHEV: '插电混动车配额',
         totalUSD: '总计 (美元)',
         usedUSD: '已用 (美元)',
+        usedVehicles: '已用 (车辆)',
         pendingToUseUSD: '待使用 (美元)',
+        pendingToUseVehicles: '待使用 (车辆)',
         balanceUSD: '余额 (美元)',
         summary: '概览',
         totalOrders: '表格订单总数',
@@ -181,6 +185,10 @@ const UIElements = {
     usedPhev: document.getElementById('used-phev') as HTMLParagraphElement,
     pendingUsePhev: document.getElementById('pending-use-phev') as HTMLParagraphElement,
     balancePhev: document.getElementById('balance-phev') as HTMLParagraphElement,
+    usedVehiclesEv: document.getElementById('used-vehicles-ev') as HTMLParagraphElement,
+    pendingUseVehiclesEv: document.getElementById('pending-use-vehicles-ev') as HTMLParagraphElement,
+    usedVehiclesPhev: document.getElementById('used-vehicles-phev') as HTMLParagraphElement,
+    pendingUseVehiclesPhev: document.getElementById('pending-use-vehicles-phev') as HTMLParagraphElement,
     totalRequests: document.getElementById('total-requests') as HTMLParagraphElement,
     usedRequests: document.getElementById('used-requests') as HTMLParagraphElement,
     pendingRequests: document.getElementById('pending-requests') as HTMLParagraphElement,
@@ -233,21 +241,16 @@ const escutarMudancasEmTempoReal = () => {
             const firestoreData = doc.data();
             originalData = firestoreData.data || [];
             currentSheetInfo = firestoreData.sheetInfo || null;
-
             processAndRenderAll(originalData);
-            
             UIElements.kpiContainer.classList.remove('hidden');
             UIElements.dashboardContent.classList.remove('hidden');
             UIElements.chartsContainer.classList.remove('hidden');
             UIElements.placeholder.classList.add('hidden');
-            
             if (currentSheetInfo) {
                 const date = new Date(currentSheetInfo.date);
                 UIElements.lastUpdate.textContent = translations[currentLanguage].lastUpdate(currentSheetInfo.name, date.toLocaleString(currentLanguage));
             }
-            
             showToast('toastLoaded', 'success');
-
         } else {
             console.log("Nenhum dado encontrado no Firebase. Aguardando upload.");
             resetUI();
@@ -257,6 +260,7 @@ const escutarMudancasEmTempoReal = () => {
 
 
 // --- LANGUAGE & FORMATTING FUNCTIONS ---
+// (Estas funções permanecem iguais)
 function setLanguage(lang: 'pt-BR' | 'zh-CN') {
     currentLanguage = lang;
     
@@ -299,7 +303,6 @@ function setLanguage(lang: 'pt-BR' | 'zh-CN') {
         }
     }
 }
-
 function showToast(messageKey: keyof typeof translations['pt-BR'], type: 'success' | 'error' = 'success') {
     const message = translations[currentLanguage][messageKey] as string;
     const toast = document.createElement('div');
@@ -310,7 +313,6 @@ function showToast(messageKey: keyof typeof translations['pt-BR'], type: 'succes
         toast.remove();
     }, 5000);
 }
-
 function parseCurrency(value: string | number | null): number {
     if (typeof value === 'number') return value;
     if (typeof value !== 'string' || !value) return 0;
@@ -322,18 +324,17 @@ function parseCurrency(value: string | number | null): number {
     }
     return parseFloat(cleanedValue.replace(/,/g, '')) || 0;
 }
-
 function formatCurrency(value: number): string {
     const locale = currentLanguage === 'zh-CN' ? 'en-US' : currentLanguage;
     return new Intl.NumberFormat(locale, { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 }
-
 function formatNumber(value: number): string {
     return new Intl.NumberFormat(currentLanguage).format(value);
 }
 
 
 // --- UI RENDERING FUNCTIONS ---
+// (As funções renderList, updateCharts, filterAndRenderLists permanecem iguais)
 function resetUI() {
     UIElements.kpiContainer.classList.add('hidden');
     UIElements.dashboardContent.classList.add('hidden');
@@ -344,7 +345,6 @@ function resetUI() {
     UIElements.liSearchInput.value = '';
     UIElements.lastUpdate.textContent = translations[currentLanguage].promptToUpload;
 }
-
 function renderList(container: HTMLElement, items: QuotaData[], isUsed: boolean) {
     container.innerHTML = '';
     const t = translations[currentLanguage];
@@ -419,7 +419,6 @@ function renderList(container: HTMLElement, items: QuotaData[], isUsed: boolean)
         container.appendChild(card);
     });
 }
-
 function updateCharts(usedEv: number, balanceEv: number, usedPhev: number, balancePhev: number) {
     const t = translations[currentLanguage];
     const chartOptions = (total: number) => ({
@@ -478,7 +477,6 @@ function updateCharts(usedEv: number, balanceEv: number, usedPhev: number, balan
         options: chartOptions(QUOTAS.PHEV)
     });
 }
-
 function filterAndRenderLists() {
     const searchTerm = UIElements.liSearchInput.value.toLowerCase().trim();
     let pendingList: QuotaData[] = [];
@@ -514,9 +512,12 @@ function filterAndRenderLists() {
     renderList(UIElements.integralList, integralList, true);
 }
 
+
 function processAndRenderAll(data: QuotaData[]) {
     let usedEv = 0, usedPhev = 0;
     let pendingEv = 0, pendingPhev = 0;
+    let usedVehiclesEv = 0, pendingVehiclesEv = 0;
+    let usedVehiclesPhev = 0, pendingVehiclesPhev = 0;
     let usedCount = 0;
     let integralCount = 0;
     let integralValue = 0;
@@ -535,8 +536,10 @@ function processAndRenderAll(data: QuotaData[]) {
                 usedCount++;
                 if (quoteType === 'EV') {
                     usedEv += value;
+                    usedVehiclesEv += vehicleCount;
                 } else if (quoteType === 'PHEV') {
                     usedPhev += value;
+                    usedVehiclesPhev += vehicleCount;
                 }
             } else if (row.REGISTRATION_TYPE === 'INTEGRAL') {
                 integralCount++;
@@ -546,8 +549,10 @@ function processAndRenderAll(data: QuotaData[]) {
         } else { // Is Pending
              if (quoteType === 'EV') {
                 pendingEv += value;
+                pendingVehiclesEv += vehicleCount;
             } else if (quoteType === 'PHEV') {
                 pendingPhev += value;
+                pendingVehiclesPhev += vehicleCount;
             }
         }
     });
@@ -565,6 +570,12 @@ function processAndRenderAll(data: QuotaData[]) {
     const balancePhev = QUOTAS.PHEV - usedPhev;
     UIElements.balancePhev.textContent = formatCurrency(balancePhev);
 
+    UIElements.usedVehiclesEv.textContent = formatNumber(usedVehiclesEv);
+    UIElements.pendingUseVehiclesEv.textContent = formatNumber(pendingVehiclesEv);
+    
+    UIElements.usedVehiclesPhev.textContent = formatNumber(usedVehiclesPhev);
+    UIElements.pendingUseVehiclesPhev.textContent = formatNumber(pendingVehiclesPhev);
+
     const pendingCount = data.length - usedCount - integralCount;
     UIElements.totalRequests.textContent = data.length.toString();
     UIElements.usedRequests.textContent = usedCount.toString();
@@ -579,6 +590,7 @@ function processAndRenderAll(data: QuotaData[]) {
 }
 
 // --- ACTION HANDLERS ---
+// (handleRegister, handleCancelDI, handleExportCSV permanecem iguais)
 function handleRegister(id: number, type: 'QUOTA' | 'INTEGRAL') {
     const itemIndex = originalData.findIndex(item => item.__id === id);
     if (itemIndex > -1) {
@@ -590,7 +602,6 @@ function handleRegister(id: number, type: 'QUOTA' | 'INTEGRAL') {
         showToast('toastRegisterError', 'error');
     }
 }
-
 function handleCancelDI(id: number) {
     const itemIndex = originalData.findIndex(item => item.__id === id);
     if (itemIndex > -1) {
@@ -602,7 +613,6 @@ function handleCancelDI(id: number) {
         showToast('toastRegisterError', 'error');
     }
 }
-
 function handleExportCSV() {
     if (originalData.length === 0) {
         showToast('toastNoDataExport', 'error');
@@ -656,6 +666,7 @@ function handleExportCSV() {
 }
 
 // --- EVENT LISTENERS ---
+// (Os listeners permanecem iguais)
 UIElements.fileUpload.addEventListener('change', (event) => {
     const file = (event.target as HTMLInputElement).files?.[0];
     if (!file) return;
@@ -716,9 +727,7 @@ UIElements.fileUpload.addEventListener('change', (event) => {
     };
     reader.readAsArrayBuffer(file);
 });
-
 UIElements.liSearchInput.addEventListener('input', filterAndRenderLists);
-
 const listClickListener = (event: MouseEvent) => {
     const target = event.target as HTMLElement;
     const registerBtn = target.closest('.register-di-btn');
@@ -733,11 +742,9 @@ const listClickListener = (event: MouseEvent) => {
         handleCancelDI(parseInt(cancelBtn.dataset.id, 10));
     }
 };
-
 UIElements.pendingList.addEventListener('click', listClickListener);
 UIElements.usedList.addEventListener('click', listClickListener);
 UIElements.integralList.addEventListener('click', listClickListener);
-
 UIElements.exportPdfBtn.addEventListener('click', () => {
     const btn = UIElements.exportPdfBtn;
     const originalText = btn.querySelector('span')!.textContent;
@@ -773,7 +780,6 @@ UIElements.exportPdfBtn.addEventListener('click', () => {
             btn.disabled = false;
         });
 });
-
 UIElements.exportCsvBtn.addEventListener('click', handleExportCSV);
 UIElements.langPtBtn.addEventListener('click', () => setLanguage('pt-BR'));
 UIElements.langZhBtn.addEventListener('click', () => setLanguage('zh-CN'));
