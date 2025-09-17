@@ -51,13 +51,9 @@ const translations = {
         quotaEV: 'QUOTA EV',
         quotaPHEV: 'QUOTA PHEV',
         totalUSD: 'Total (USD)',
-        totalVehicles: 'Total (Veículos)',
         usedUSD: 'Utilizado (USD)',
-        usedVehicles: 'Utilizado (Veículos)',
         pendingToUseUSD: 'Pendente de Uso (USD)',
-        pendingToUseVehicles: 'Pendente de Uso (Veículos)',
         balanceUSD: 'SALDO (USD)',
-        balanceVehicles: 'SALDO (Veículos)',
         summary: 'Resumo Geral',
         totalOrders: 'Total de Pedidos na Planilha',
         usedOrders: 'Pedidos Utilizados (DI Registrada)',
@@ -116,13 +112,9 @@ const translations = {
         quotaEV: '电动汽车配额',
         quotaPHEV: '插电混动车配额',
         totalUSD: '总计 (美元)',
-        totalVehicles: '总计 (车辆)',
         usedUSD: '已用 (美元)',
-        usedVehicles: '已用 (车辆)',
         pendingToUseUSD: '待使用 (美元)',
-        pendingToUseVehicles: '待使用 (车辆)',
         balanceUSD: '余额 (美元)',
-        balanceVehicles: '余额 (车辆)',
         summary: '概览',
         totalOrders: '表格订单总数',
         usedOrders: '已用订单 (DI 已注册)',
@@ -189,12 +181,6 @@ const UIElements = {
     usedPhev: document.getElementById('used-phev') as HTMLParagraphElement,
     pendingUsePhev: document.getElementById('pending-use-phev') as HTMLParagraphElement,
     balancePhev: document.getElementById('balance-phev') as HTMLParagraphElement,
-    totalVehiclesEv: document.getElementById('total-vehicles-ev') as HTMLParagraphElement,
-    usedVehiclesEv: document.getElementById('used-vehicles-ev') as HTMLParagraphElement,
-    pendingUseVehiclesEv: document.getElementById('pending-use-vehicles-ev') as HTMLParagraphElement,
-    totalVehiclesPhev: document.getElementById('total-vehicles-phev') as HTMLParagraphElement,
-    usedVehiclesPhev: document.getElementById('used-vehicles-phev') as HTMLParagraphElement,
-    pendingUseVehiclesPhev: document.getElementById('pending-use-vehicles-phev') as HTMLParagraphElement,
     totalRequests: document.getElementById('total-requests') as HTMLParagraphElement,
     usedRequests: document.getElementById('used-requests') as HTMLParagraphElement,
     pendingRequests: document.getElementById('pending-requests') as HTMLParagraphElement,
@@ -213,10 +199,6 @@ const UIElements = {
     phevChartCanvas: document.getElementById('phev-chart') as HTMLCanvasElement,
     langPtBtn: document.getElementById('lang-pt-btn') as HTMLButtonElement,
     langZhBtn: document.getElementById('lang-zh-btn') as HTMLButtonElement,
-    evVehicleAlert: document.getElementById('ev-vehicle-alert') as HTMLDivElement,
-    phevVehicleAlert: document.getElementById('phev-vehicle-alert') as HTMLDivElement,
-    evVehicleTooltip: document.getElementById('ev-vehicle-tooltip') as HTMLDivElement,
-    phevVehicleTooltip: document.getElementById('phev-vehicle-tooltip') as HTMLDivElement,
 };
 
 // --- CONSTANTS ---
@@ -230,7 +212,7 @@ let originalData: QuotaData[] = [];
 let evChart: any = null;
 let phevChart: any = null;
 let currentLanguage: 'pt-BR' | 'zh-CN' = 'pt-BR';
-let currentSheetInfo: { name: string, date: string } | null = null; // Date is now string
+let currentSheetInfo: { name: string, date: string } | null = null;
 
 // Register ChartJS plugins
 Chart.register(ChartDataLabels);
@@ -254,7 +236,6 @@ const escutarMudancasEmTempoReal = () => {
 
             processAndRenderAll(originalData);
             
-            // Exibir o dashboard se houver dados
             UIElements.kpiContainer.classList.remove('hidden');
             UIElements.dashboardContent.classList.remove('hidden');
             UIElements.chartsContainer.classList.remove('hidden');
@@ -276,7 +257,6 @@ const escutarMudancasEmTempoReal = () => {
 
 
 // --- LANGUAGE & FORMATTING FUNCTIONS ---
-
 function setLanguage(lang: 'pt-BR' | 'zh-CN') {
     currentLanguage = lang;
     
@@ -320,7 +300,6 @@ function setLanguage(lang: 'pt-BR' | 'zh-CN') {
     }
 }
 
-// (O restante das funções: showToast, parseCurrency, formatCurrency, formatNumber... permanecem iguais)
 function showToast(messageKey: keyof typeof translations['pt-BR'], type: 'success' | 'error' = 'success') {
     const message = translations[currentLanguage][messageKey] as string;
     const toast = document.createElement('div');
@@ -335,26 +314,18 @@ function showToast(messageKey: keyof typeof translations['pt-BR'], type: 'succes
 function parseCurrency(value: string | number | null): number {
     if (typeof value === 'number') return value;
     if (typeof value !== 'string' || !value) return 0;
-
     const cleanedValue = String(value).replace(/[^0-9,.]/g, '');
     const lastComma = cleanedValue.lastIndexOf(',');
     const lastDot = cleanedValue.lastIndexOf('.');
-
     if (lastComma > lastDot) {
         return parseFloat(cleanedValue.replace(/\./g, '').replace(',', '.')) || 0;
     }
-    
     return parseFloat(cleanedValue.replace(/,/g, '')) || 0;
 }
 
 function formatCurrency(value: number): string {
     const locale = currentLanguage === 'zh-CN' ? 'en-US' : currentLanguage;
-    return new Intl.NumberFormat(locale, { 
-        style: 'currency', 
-        currency: 'USD', 
-        minimumFractionDigits: 2, 
-        maximumFractionDigits: 2 
-    }).format(value);
+    return new Intl.NumberFormat(locale, { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 }
 
 function formatNumber(value: number): string {
@@ -363,7 +334,6 @@ function formatNumber(value: number): string {
 
 
 // --- UI RENDERING FUNCTIONS ---
-
 function resetUI() {
     UIElements.kpiContainer.classList.add('hidden');
     UIElements.dashboardContent.classList.add('hidden');
@@ -375,7 +345,6 @@ function resetUI() {
     UIElements.lastUpdate.textContent = translations[currentLanguage].promptToUpload;
 }
 
-// (renderList, updateCharts, filterAndRenderLists, processAndRenderAll... permanecem praticamente iguais)
 function renderList(container: HTMLElement, items: QuotaData[], isUsed: boolean) {
     container.innerHTML = '';
     const t = translations[currentLanguage];
@@ -428,7 +397,6 @@ function renderList(container: HTMLElement, items: QuotaData[], isUsed: boolean)
                 </div>
             `;
         }
-
 
         card.innerHTML = `
             <div class="flex justify-between items-start">
@@ -513,7 +481,6 @@ function updateCharts(usedEv: number, balanceEv: number, usedPhev: number, balan
 
 function filterAndRenderLists() {
     const searchTerm = UIElements.liSearchInput.value.toLowerCase().trim();
-
     let pendingList: QuotaData[] = [];
     let usedList: QuotaData[] = [];
     let integralList: QuotaData[] = [];
@@ -547,14 +514,9 @@ function filterAndRenderLists() {
     renderList(UIElements.integralList, integralList, true);
 }
 
-
 function processAndRenderAll(data: QuotaData[]) {
     let usedEv = 0, usedPhev = 0;
     let pendingEv = 0, pendingPhev = 0;
-    let totalVehiclesEv = 0, usedVehiclesEv = 0, pendingVehiclesEv = 0;
-    let totalVehiclesPhev = 0, usedVehiclesPhev = 0, pendingVehiclesPhev = 0;
-    let zeroVehicleCount = 0;
-    
     let usedCount = 0;
     let integralCount = 0;
     let integralValue = 0;
@@ -568,25 +530,13 @@ function processAndRenderAll(data: QuotaData[]) {
         const value = parseCurrency(row['VALOR USD']);
         const vehicleCount = parseInt(String(row['QTD VEÍCULOS'] || '0'));
 
-        if(vehicleCount === 0) {
-            zeroVehicleCount++;
-        }
-
-        if (quoteType === 'EV') {
-            totalVehiclesEv += vehicleCount;
-        } else if (quoteType === 'PHEV') {
-            totalVehiclesPhev += vehicleCount;
-        }
-        
         if (isUsed) {
             if (row.REGISTRATION_TYPE === 'QUOTA') {
                 usedCount++;
                 if (quoteType === 'EV') {
                     usedEv += value;
-                    usedVehiclesEv += vehicleCount;
                 } else if (quoteType === 'PHEV') {
                     usedPhev += value;
-                    usedVehiclesPhev += vehicleCount;
                 }
             } else if (row.REGISTRATION_TYPE === 'INTEGRAL') {
                 integralCount++;
@@ -596,10 +546,8 @@ function processAndRenderAll(data: QuotaData[]) {
         } else { // Is Pending
              if (quoteType === 'EV') {
                 pendingEv += value;
-                pendingVehiclesEv += vehicleCount;
             } else if (quoteType === 'PHEV') {
                 pendingPhev += value;
-                pendingVehiclesPhev += vehicleCount;
             }
         }
     });
@@ -617,14 +565,6 @@ function processAndRenderAll(data: QuotaData[]) {
     const balancePhev = QUOTAS.PHEV - usedPhev;
     UIElements.balancePhev.textContent = formatCurrency(balancePhev);
 
-    UIElements.totalVehiclesEv.textContent = formatNumber(totalVehiclesEv);
-    UIElements.usedVehiclesEv.textContent = formatNumber(usedVehiclesEv);
-    UIElements.pendingUseVehiclesEv.textContent = formatNumber(pendingVehiclesEv);
-    
-    UIElements.totalVehiclesPhev.textContent = formatNumber(totalVehiclesPhev);
-    UIElements.usedVehiclesPhev.textContent = formatNumber(usedVehiclesPhev);
-    UIElements.pendingUseVehiclesPhev.textContent = formatNumber(pendingVehiclesPhev);
-
     const pendingCount = data.length - usedCount - integralCount;
     UIElements.totalRequests.textContent = data.length.toString();
     UIElements.usedRequests.textContent = usedCount.toString();
@@ -633,18 +573,6 @@ function processAndRenderAll(data: QuotaData[]) {
     UIElements.integralRequests.textContent = integralCount.toString();
     UIElements.integralValue.textContent = formatCurrency(integralValue);
     UIElements.integralVehicles.textContent = formatNumber(integralVehicles);
-
-    // Update Vehicle Alert
-    const t = translations[currentLanguage];
-    const alertElements = [UIElements.evVehicleAlert, UIElements.phevVehicleAlert];
-    const tooltipElements = [UIElements.evVehicleTooltip, UIElements.phevVehicleTooltip];
-    if (zeroVehicleCount > 0) {
-        const tooltipText = t.vehicleAlertTooltip(zeroVehicleCount);
-        alertElements.forEach(el => el.classList.remove('hidden'));
-        tooltipElements.forEach(el => el.textContent = tooltipText);
-    } else {
-        alertElements.forEach(el => el.classList.add('hidden'));
-    }
 
     filterAndRenderLists();
     updateCharts(usedEv, balanceEv, usedPhev, balancePhev);
@@ -656,7 +584,6 @@ function handleRegister(id: number, type: 'QUOTA' | 'INTEGRAL') {
     if (itemIndex > -1) {
         originalData[itemIndex]['DATA REGISTRO DI'] = new Date().toLocaleDateString(currentLanguage);
         originalData[itemIndex]['REGISTRATION_TYPE'] = type;
-        // Salva a alteração no Firebase, que irá disparar a atualização da UI
         salvarDadosNoFirebase({ data: originalData, sheetInfo: currentSheetInfo });
         showToast('toastRegisterSuccess', 'success');
     } else {
@@ -669,7 +596,6 @@ function handleCancelDI(id: number) {
     if (itemIndex > -1) {
         originalData[itemIndex]['DATA REGISTRO DI'] = null;
         originalData[itemIndex]['REGISTRATION_TYPE'] = null;
-        // Salva a alteração no Firebase, que irá disparar a atualização da UI
         salvarDadosNoFirebase({ data: originalData, sheetInfo: currentSheetInfo });
         showToast('toastCancelSuccess', 'success');
     } else {
@@ -677,13 +603,11 @@ function handleCancelDI(id: number) {
     }
 }
 
-// (handleExportCSV e o listener do PDF permanecem iguais)
 function handleExportCSV() {
     if (originalData.length === 0) {
         showToast('toastNoDataExport', 'error');
         return;
     }
-
     const btn = UIElements.exportCsvBtn;
     const originalText = btn.querySelector('span')!.textContent;
     btn.querySelector('span')!.textContent = translations[currentLanguage].loadingExport;
@@ -710,7 +634,7 @@ function handleExportCSV() {
             csvContent += values.join(',') + '\n';
         });
 
-        const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' }); // Add BOM for Excel
+        const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
         link.setAttribute("href", url);
@@ -731,9 +655,7 @@ function handleExportCSV() {
     }
 }
 
-
 // --- EVENT LISTENERS ---
-
 UIElements.fileUpload.addEventListener('change', (event) => {
     const file = (event.target as HTMLInputElement).files?.[0];
     if (!file) return;
@@ -769,7 +691,6 @@ UIElements.fileUpload.addEventListener('change', (event) => {
                 throw err;
             }
 
-            // Prepara os dados para o Firebase
             const dataToSave = jsonData.map((row, index) => ({ 
                 ...row, 
                 __id: index, 
@@ -777,8 +698,6 @@ UIElements.fileUpload.addEventListener('change', (event) => {
             } as QuotaData));
 
             const sheetInfoToSave = { name: sheetName, date: new Date().toISOString() };
-
-            // Envia os dados para o Firebase. A atualização da UI ocorrerá pelo listener.
             salvarDadosNoFirebase({ data: dataToSave, sheetInfo: sheetInfoToSave });
 
         } catch (err: any) {
@@ -797,7 +716,6 @@ UIElements.fileUpload.addEventListener('change', (event) => {
     };
     reader.readAsArrayBuffer(file);
 });
-
 
 UIElements.liSearchInput.addEventListener('input', filterAndRenderLists);
 
@@ -819,7 +737,6 @@ const listClickListener = (event: MouseEvent) => {
 UIElements.pendingList.addEventListener('click', listClickListener);
 UIElements.usedList.addEventListener('click', listClickListener);
 UIElements.integralList.addEventListener('click', listClickListener);
-
 
 UIElements.exportPdfBtn.addEventListener('click', () => {
     const btn = UIElements.exportPdfBtn;
@@ -864,6 +781,5 @@ UIElements.langZhBtn.addEventListener('click', () => setLanguage('zh-CN'));
 // Initial Load
 document.addEventListener('DOMContentLoaded', () => {
     setLanguage('pt-BR');
-    // Inicia o listener do Firebase para receber dados em tempo real
     escutarMudancasEmTempoReal();
 });
