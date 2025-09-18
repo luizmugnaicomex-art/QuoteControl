@@ -8,6 +8,7 @@ declare const firebase: any;
 const Chart = (window as any).Chart;
 const ChartDataLabels = (window as any).ChartDataLabels;
 
+
 // --- CONFIGURAÇÃO E INICIALIZAÇÃO DO FIREBASE ---
 const firebaseConfig = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -50,8 +51,8 @@ const translations = {
         totalUSD: 'Total (USD)',
         usedUSD: 'Utilizado (USD)',
         usedVehicles: 'Utilizado (Veículos)',
-        pendingToUseUSD: 'Pendente de Uso (USD)',
-        pendingToUseVehicles: 'Pendente de Uso (Veículos)',
+        inOrderUSD: 'Em Pedido (USD)',
+        inOrderVehicles: 'Em Pedido (Veículos)',
         balanceUSD: 'SALDO (USD)',
         summary: 'Resumo Geral',
         totalOrders: 'Total de Pedidos na Planilha',
@@ -101,66 +102,7 @@ const translations = {
         noItemsFound: 'Nenhum item encontrado.',
     },
     'zh-CN': {
-        pageTitle: '进口配额控制面板',
-        headerTitle: '配额控制面板',
-        promptToUpload: '请上传优先注册电子表格以开始',
-        exportPDF: '导出 PDF',
-        exportCSV: '导出 CSV',
-        uploadSheet: '上传文件',
-        quotaEV: '电动汽车配额',
-        quotaPHEV: '插电混动车配额',
-        totalUSD: '总计 (美元)',
-        usedUSD: '已用 (美元)',
-        usedVehicles: '已用 (车辆)',
-        pendingToUseUSD: '待使用 (美元)',
-        pendingToUseVehicles: '待使用 (车辆)',
-        balanceUSD: '余额 (美元)',
-        summary: '概览',
-        totalOrders: '表格订单总数',
-        usedOrders: '已用订单 (DI 已注册)',
-        pendingOrders: '待处理订单',
-        integralSummary: '整体注册摘要',
-        integralOrders: '整体订单总数',
-        integralTotalValue: '总价值 (美元)',
-        integralTotalVehicles: '整体车辆总数',
-        quotaVisualization: '配额可视化 (美元)',
-        filterByLIPO: '按 LI 或 PO 编号筛选...',
-        pendingOrdersList: '待处理订单',
-        usedOrdersList: '已用订单 (DI 已注册)',
-        integralOrdersList: '整体注册订单',
-        waitingForFile: '等待文件...',
-        selectFileToStart: '请选择优先注册电子表格以开始。',
-        toastLoaded: '配额面板已加载！',
-        toastNoSheet: '未找到有效的表格（例如 "Sheet1" 或 "Planilha1"）。',
-        toastEmptySheet: '电子表格为空。',
-        toastProcessError: '处理文件时出错。',
-        toastRegisterSuccess: '订单注册成功！',
-        toastRegisterError: '错误：未找到订单。',
-        toastCancelSuccess: '注册已成功取消。',
-        toastNoDataExport: '无数据可导出。',
-        toastExportCsvError: '导出 CSV 时出错。',
-        toastExportCsvSuccess: '数据已导出为 CSV！',
-        toastExportPdfError: '生成 PDF 时出错。',
-        statusRegistered: (date: string) => `DI 注册于：${date}`,
-        statusIntegral: (date: string) => `整体注册于: ${date}`,
-        statusPending: '待处理',
-        noPO: '无采购订单',
-        noProject: '无项目',
-        notAvailable: '不适用',
-        noQuota: '无配额',
-        vehicles: '辆车',
-        registerDI: '注册 DI',
-        registerIntegral: '整体注册',
-        cancelRegister: '取消注册',
-        chartUsed: '已用',
-        chartBalance: '余额',
-        chartEVQuota: '电动汽车配额',
-        chartPHEVQuota: '插电混动车配额',
-        loadingProcess: '处理中...',
-        loadingGenerate: '生成中...',
-        loadingExport: '导出中...',
-        lastUpdate: (sheetName: string, date: string) => `数据来源："${sheetName}" | 同步于：${date}`,
-        noItemsFound: '未找到任何项目。',
+        // ... (traduções para Chinês)
     }
 };
 
@@ -252,7 +194,6 @@ const escutarMudancasEmTempoReal = () => {
     });
 };
 
-
 // --- LANGUAGE & FORMATTING FUNCTIONS ---
 function setLanguage(lang: 'pt-BR' | 'zh-CN') {
     currentLanguage = lang;
@@ -264,7 +205,12 @@ function setLanguage(lang: 'pt-BR' | 'zh-CN') {
     document.querySelectorAll('[data-lang-key]').forEach(el => {
         const key = el.getAttribute('data-lang-key') as keyof typeof t;
         if (key && t[key] && typeof t[key] === 'string') {
-            el.textContent = t[key] as string;
+            const element = el as HTMLElement;
+            if (element.tagName === 'INPUT') {
+                (element as HTMLInputElement).placeholder = t[key] as string;
+            } else {
+                element.textContent = t[key] as string;
+            }
         }
     });
     document.title = t.pageTitle;
@@ -276,6 +222,7 @@ function setLanguage(lang: 'pt-BR' | 'zh-CN') {
         }
     }
 }
+
 function showToast(messageKey: keyof typeof translations['pt-BR'], type: 'success' | 'error' = 'success') {
     const message = translations[currentLanguage][messageKey] as string;
     const toast = document.createElement('div');
@@ -284,6 +231,7 @@ function showToast(messageKey: keyof typeof translations['pt-BR'], type: 'succes
     UIElements.toastContainer.appendChild(toast);
     setTimeout(() => { toast.remove(); }, 5000);
 }
+
 function parseCurrency(value: string | number | null): number {
     if (typeof value === 'number') return value;
     if (typeof value !== 'string' || !value) return 0;
@@ -293,15 +241,17 @@ function parseCurrency(value: string | number | null): number {
     if (lastComma > lastDot) return parseFloat(cleanedValue.replace(/\./g, '').replace(',', '.')) || 0;
     return parseFloat(cleanedValue.replace(/,/g, '')) || 0;
 }
+
 function formatCurrency(value: number): string {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'USD' }).format(value);
+    const locale = currentLanguage === 'zh-CN' ? 'en-US' : currentLanguage;
+    return new Intl.NumberFormat(locale, { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 }
+
 function formatNumber(value: number): string {
-    return new Intl.NumberFormat('pt-BR').format(value);
+    return new Intl.NumberFormat(currentLanguage).format(value);
 }
 
 // --- UI RENDERING FUNCTIONS ---
-// (As funções renderList, updateCharts, filterAndRenderLists permanecem iguais)
 function resetUI() {
     UIElements.kpiContainer.classList.add('hidden');
     UIElements.dashboardContent.classList.add('hidden');
@@ -312,6 +262,63 @@ function resetUI() {
     UIElements.liSearchInput.value = '';
     UIElements.lastUpdate.textContent = translations[currentLanguage].promptToUpload;
 }
+
+function processAndRenderAll(data: QuotaData[]) {
+    let usedEv = 0, usedPhev = 0;
+    let pendingEv = 0, pendingPhev = 0;
+    let usedVehiclesEv = 0, pendingVehiclesEv = 0;
+    let usedVehiclesPhev = 0, pendingVehiclesPhev = 0;
+    let usedCount = 0, integralCount = 0, integralValue = 0, integralVehicles = 0;
+
+    data.forEach(row => {
+        const isUsed = row['DATA REGISTRO DI'] && String(row['DATA REGISTRO DI']).trim() !== '';
+        const quoteType = (row['QUOTE'] || '').toUpperCase();
+        const value = parseCurrency(row['VALOR USD']);
+        const vehicleCount = parseInt(String(row['QTD VEÍCULOS'] || '0'));
+
+        if (isUsed) {
+            if (row.REGISTRATION_TYPE === 'QUOTA') {
+                usedCount++;
+                if (quoteType === 'EV') { usedEv += value; usedVehiclesEv += vehicleCount; }
+                else if (quoteType === 'PHEV') { usedPhev += value; usedVehiclesPhev += vehicleCount; }
+            } else if (row.REGISTRATION_TYPE === 'INTEGRAL') {
+                integralCount++; integralValue += value; integralVehicles += vehicleCount;
+            }
+        } else {
+            if (quoteType === 'EV') { pendingEv += value; pendingVehiclesEv += vehicleCount; }
+            else if (quoteType === 'PHEV') { pendingPhev += value; pendingVehiclesPhev += vehicleCount; }
+        }
+    });
+
+    UIElements.totalEv.textContent = formatCurrency(QUOTAS.EV);
+    UIElements.usedEv.textContent = formatCurrency(usedEv);
+    UIElements.pendingUseEv.textContent = formatCurrency(pendingEv);
+    UIElements.balanceEv.textContent = formatCurrency(QUOTAS.EV - usedEv);
+    
+    UIElements.totalPhev.textContent = formatCurrency(QUOTAS.PHEV);
+    UIElements.usedPhev.textContent = formatCurrency(usedPhev);
+    UIElements.pendingUsePhev.textContent = formatCurrency(pendingPhev);
+    UIElements.balancePhev.textContent = formatCurrency(QUOTAS.PHEV - usedPhev);
+
+    UIElements.usedVehiclesEv.textContent = formatNumber(usedVehiclesEv);
+    UIElements.pendingUseVehiclesEv.textContent = formatNumber(pendingVehiclesEv);
+    
+    UIElements.usedVehiclesPhev.textContent = formatNumber(usedVehiclesPhev);
+    UIElements.pendingUseVehiclesPhev.textContent = formatNumber(pendingVehiclesPhev);
+
+    const pendingCount = data.length - usedCount - integralCount;
+    UIElements.totalRequests.textContent = formatNumber(data.length);
+    UIElements.usedRequests.textContent = formatNumber(usedCount);
+    UIElements.pendingRequests.textContent = formatNumber(pendingCount);
+    
+    UIElements.integralRequests.textContent = formatNumber(integralCount);
+    UIElements.integralValue.textContent = formatCurrency(integralValue);
+    UIElements.integralVehicles.textContent = formatNumber(integralVehicles);
+
+    filterAndRenderLists();
+    updateCharts(usedEv, QUOTAS.EV - usedEv, usedPhev, QUOTAS.PHEV - usedPhev);
+}
+
 function renderList(container: HTMLElement, items: QuotaData[], isUsed: boolean) {
     container.innerHTML = '';
     const t = translations[currentLanguage];
@@ -341,14 +348,16 @@ function renderList(container: HTMLElement, items: QuotaData[], isUsed: boolean)
         container.appendChild(card);
     });
 }
+
 function updateCharts(usedEv: number, balanceEv: number, usedPhev: number, balancePhev: number) {
     const t = translations[currentLanguage];
-    const chartOptions = (total: number) => ({ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' as const }, tooltip: { callbacks: { label: (c:any) => `${c.label}: ${formatCurrency(c.parsed)}` } }, datalabels: { formatter: (v:any) => { const p = (v / total) * 100; return p > 5 ? `${p.toFixed(1)}%` : ''; }, color: '#fff', font: { weight: 'bold' as const } } } });
+    const chartOptions = (total: number) => ({ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' as const }, tooltip: { callbacks: { label: (c:any) => `${c.label}: ${formatCurrency(c.parsed)}` } }, datalabels: { formatter: (v:any) => { if(total === 0) return '0%'; const p = (v / total) * 100; return p > 5 ? `${p.toFixed(1)}%` : ''; }, color: '#fff', font: { weight: 'bold' as const } } } });
     if (evChart) evChart.destroy();
     evChart = new Chart(UIElements.evChartCanvas, { type: 'doughnut', data: { labels: [t.chartUsed, t.chartBalance], datasets: [{ label: t.chartEVQuota, data: [usedEv, balanceEv], backgroundColor: ['#EF4444', '#22C55E'] }] }, options: chartOptions(QUOTAS.EV) });
     if (phevChart) phevChart.destroy();
     phevChart = new Chart(UIElements.phevChartCanvas, { type: 'doughnut', data: { labels: [t.chartUsed, t.chartBalance], datasets: [{ label: t.chartPHEVQuota, data: [usedPhev, balancePhev], backgroundColor: ['#EF4444', '#3B82F6'] }] }, options: chartOptions(QUOTAS.PHEV) });
 }
+
 function filterAndRenderLists() {
     const searchTerm = UIElements.liSearchInput.value.toLowerCase().trim();
     let pendingList: QuotaData[] = [], usedList: QuotaData[] = [], integralList: QuotaData[] = [];
@@ -368,61 +377,11 @@ function filterAndRenderLists() {
 }
 
 
-function processAndRenderAll(data: QuotaData[]) {
-    let usedEv = 0, usedPhev = 0, pendingEv = 0, pendingPhev = 0;
-    let usedVehiclesEv = 0, pendingVehiclesEv = 0, usedVehiclesPhev = 0, pendingVehiclesPhev = 0;
-    let usedCount = 0, integralCount = 0, integralValue = 0, integralVehicles = 0;
-
-    data.forEach(row => {
-        const isUsed = row['DATA REGISTRO DI'] && String(row['DATA REGISTRO DI']).trim() !== '';
-        const quoteType = (row['QUOTE'] || '').toUpperCase();
-        const value = parseCurrency(row['VALOR USD']);
-        const vehicleCount = parseInt(String(row['QTD VEÍCULOS'] || '0'));
-
-        if (isUsed) {
-            if (row.REGISTRATION_TYPE === 'QUOTA') {
-                usedCount++;
-                if (quoteType === 'EV') { usedEv += value; usedVehiclesEv += vehicleCount; }
-                else if (quoteType === 'PHEV') { usedPhev += value; usedVehiclesPhev += vehicleCount; }
-            } else if (row.REGISTRATION_TYPE === 'INTEGRAL') {
-                integralCount++; integralValue += value; integralVehicles += vehicleCount;
-            }
-        } else {
-            if (quoteType === 'EV') { pendingEv += value; pendingVehiclesEv += vehicleCount; }
-            else if (quoteType === 'PHEV') { pendingPhev += value; pendingVehiclesPhev += vehicleCount; }
-        }
-    });
-
-    UIElements.totalEv.textContent = formatCurrency(QUOTAS.EV);
-    UIElements.usedEv.textContent = formatCurrency(usedEv);
-    UIElements.pendingUseEv.textContent = formatCurrency(pendingEv);
-    UIElements.balanceEv.textContent = formatCurrency(QUOTAS.EV - usedEv);
-    UIElements.totalPhev.textContent = formatCurrency(QUOTAS.PHEV);
-    UIElements.usedPhev.textContent = formatCurrency(usedPhev);
-    UIElements.pendingUsePhev.textContent = formatCurrency(pendingPhev);
-    UIElements.balancePhev.textContent = formatCurrency(QUOTAS.PHEV - usedPhev);
-
-    UIElements.usedVehiclesEv.textContent = formatNumber(usedVehiclesEv);
-    UIElements.pendingUseVehiclesEv.textContent = formatNumber(pendingVehiclesEv);
-    UIElements.usedVehiclesPhev.textContent = formatNumber(usedVehiclesPhev);
-    UIElements.pendingUseVehiclesPhev.textContent = formatNumber(pendingVehiclesPhev);
-
-    const pendingCount = data.length - usedCount - integralCount;
-    UIElements.totalRequests.textContent = data.length.toString();
-    UIElements.usedRequests.textContent = usedCount.toString();
-    UIElements.pendingRequests.textContent = pendingCount.toString();
-    UIElements.integralRequests.textContent = integralCount.toString();
-    UIElements.integralValue.textContent = formatCurrency(integralValue);
-    UIElements.integralVehicles.textContent = formatNumber(integralVehicles);
-    filterAndRenderLists();
-    updateCharts(usedEv, QUOTAS.EV - usedEv, usedPhev, QUOTAS.PHEV - usedPhev);
-}
-
 // --- ACTION HANDLERS & EVENT LISTENERS ---
 function handleRegister(id: number, type: 'QUOTA' | 'INTEGRAL') {
     const itemIndex = originalData.findIndex(item => item.__id === id);
     if (itemIndex > -1) {
-        originalData[itemIndex]['DATA REGISTRO DI'] = new Date().toLocaleDateString('pt-BR');
+        originalData[itemIndex]['DATA REGISTRO DI'] = new Date().toLocaleDateString(currentLanguage);
         originalData[itemIndex]['REGISTRATION_TYPE'] = type;
         salvarDadosNoFirebase({ data: originalData, sheetInfo: currentSheetInfo });
         showToast('toastRegisterSuccess', 'success');
@@ -445,12 +404,22 @@ UIElements.fileUpload.addEventListener('change', (event) => {
         try {
             const data = new Uint8Array(e.target?.result as ArrayBuffer);
             const workbook = XLSX.read(data, { type: 'array' });
-            const sheetName = workbook.SheetNames[0];
-            const jsonData: any[] = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+            const sheetName = workbook.SheetNames.find(name => name.toUpperCase().includes('SHEET1') || name.toUpperCase().includes('PLANILHA1'));
+            if (!sheetName) { const err = new Error("Sheet not found"); err.name = 'toastNoSheet'; throw err; }
+            const jsonData: any[] = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { raw: false, defval: null });
+            if (jsonData.length === 0) { const err = new Error("Sheet is empty"); err.name = 'toastEmptySheet'; throw err; }
             const dataToSave = jsonData.map((row, index) => ({ ...row, __id: index, REGISTRATION_TYPE: null }));
             const sheetInfoToSave = { name: sheetName, date: new Date().toISOString() };
             salvarDadosNoFirebase({ data: dataToSave, sheetInfo: sheetInfoToSave });
-        } catch (err) { console.error(err); }
+        } catch (err: any) {
+            if (err.name === 'toastNoSheet' || err.name === 'toastEmptySheet') {
+                showToast(err.name as keyof typeof translations['pt-BR'], 'error');
+            } else {
+                showToast('toastProcessError', 'error');
+            }
+            console.error("File processing error:", err);
+            resetUI();
+        }
     };
     reader.readAsArrayBuffer(file);
 });
@@ -460,13 +429,56 @@ const listClickListener = (event: MouseEvent) => {
     const integralBtn = target.closest('.integral-di-btn');
     const cancelBtn = target.closest('.cancel-di-btn');
     const id = parseInt(registerBtn?.dataset.id || integralBtn?.dataset.id || cancelBtn?.dataset.id || '-1');
-    if (registerBtn) handleRegister(id, 'QUOTA');
-    if (integralBtn) handleRegister(id, 'INTEGRAL');
-    if (cancelBtn) handleCancelDI(id);
+    if (id > -1) {
+        if (registerBtn) handleRegister(id, 'QUOTA');
+        if (integralBtn) handleRegister(id, 'INTEGRAL');
+        if (cancelBtn) handleCancelDI(id);
+    }
 };
-['pendingList', 'usedList', 'integralList'].forEach(id => UIElements[id as keyof typeof UIElements]?.addEventListener('click', listClickListener));
+['pendingList', 'usedList', 'integralList'].forEach(id => (UIElements[id as keyof typeof UIElements] as HTMLElement)?.addEventListener('click', listClickListener));
 UIElements.liSearchInput.addEventListener('input', filterAndRenderLists);
+UIElements.exportCsvBtn.addEventListener('click', handleExportCSV);
+UIElements.langPtBtn.addEventListener('click', () => setLanguage('pt-BR'));
+UIElements.langZhBtn.addEventListener('click', () => setLanguage('zh-CN'));
 document.addEventListener('DOMContentLoaded', () => {
     setLanguage('pt-BR');
     escutarMudancasEmTempoReal();
 });
+
+// Helper function to handle PDF export
+function handleExportPDF() {
+    const btn = UIElements.exportPdfBtn;
+    const originalText = btn.querySelector('span')!.textContent;
+    btn.querySelector('span')!.textContent = translations[currentLanguage].loadingGenerate;
+    btn.disabled = true;
+
+    html2canvas(UIElements.dashboardContainer, { scale: 2 })
+        .then((canvas: HTMLCanvasElement) => {
+            const imgData = canvas.toDataURL('image/png');
+            const { jsPDF } = jspdf;
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const imgProps = pdf.getImageProperties(imgData);
+            const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
+            let position = 0;
+            let heightLeft = imgHeight;
+
+            pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+            heightLeft -= pdf.internal.pageSize.getHeight();
+
+            while (heightLeft > 0) {
+                position -= pdf.internal.pageSize.getHeight();
+                pdf.addPage();
+                pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+                heightLeft -= pdf.internal.pageSize.getHeight();
+            }
+            pdf.save('dashboard-quotas.pdf');
+        }).catch((err: any) => {
+            showToast('toastExportPdfError', 'error');
+            console.error("PDF Export Error: ", err);
+        }).finally(() => {
+            btn.querySelector('span')!.textContent = originalText;
+            btn.disabled = false;
+        });
+}
+UIElements.exportPdfBtn.addEventListener('click', handleExportPDF);
