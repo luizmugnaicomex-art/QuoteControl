@@ -1,32 +1,16 @@
-// --- DECLARAÇÕES GLOBAIS ---
+// Make libraries available globally from CDN
 declare var XLSX: any;
 declare var jspdf: any;
 declare var html2canvas: any;
-declare const firebase: any; // Adicionado para o Firebase
 
-// Resolve ReferenceError para bibliotecas CDN
+// Resolve ReferenceError for CDN libraries in a module script by assigning them to constants from the window object.
 const Chart = (window as any).Chart;
 const ChartDataLabels = (window as any).ChartDataLabels;
 
 
-// --- CONFIGURAÇÃO E INICIALIZAÇÃO DO FIREBASE ---
-const firebaseConfig = {
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-    appId: import.meta.env.VITE_FIREBASE_APP_ID
-};
-
-// Inicializa o Firebase e o Firestore
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-
-
 // --- TYPE DEFINITIONS ---
 interface QuotaData {
-    __id: number;
+    __id: number; // Internal unique ID for tracking clicks
     [key: string]: string | number | null;
     'DATA REGISTRO DI': string | null;
     'REGISTRATION_TYPE'?: 'QUOTA' | 'INTEGRAL' | null;
@@ -54,8 +38,8 @@ const translations = {
         totalVehicles: 'Total (Veículos)',
         usedUSD: 'Utilizado (USD)',
         usedVehicles: 'Utilizado (Veículos)',
-        pendingToUseUSD: 'Pendente de Uso (USD)',
-        pendingToUseVehicles: 'Pendente de Uso (Veículos)',
+        pendingToUseUSD: 'Em Pedido (USD)',
+        pendingToUseVehicles: 'Em Pedido (Veículos)',
         balanceUSD: 'SALDO (USD)',
         balanceVehicles: 'SALDO (Veículos)',
         summary: 'Resumo Geral',
@@ -102,7 +86,7 @@ const translations = {
         loadingProcess: 'Processando...',
         loadingGenerate: 'Gerando...',
         loadingExport: 'Exportando...',
-        lastUpdate: (sheetName: string, date: string) => `Dados de "${sheetName}" | Sincronizado em: ${date}`,
+        lastUpdate: (sheetName: string, date: string) => `Dados de "${sheetName}" | Carregado em: ${date}`,
         noItemsFound: 'Nenhum item encontrado.',
         vehicleAlertTooltip: (count: number) => `Atenção: ${count} pedido(s) na planilha está(ão) com 0 veículos. Os totais de veículos podem estar incorretos.`
     },
@@ -119,8 +103,8 @@ const translations = {
         totalVehicles: '总计 (车辆)',
         usedUSD: '已用 (美元)',
         usedVehicles: '已用 (车辆)',
-        pendingToUseUSD: '待使用 (美元)',
-        pendingToUseVehicles: '待使用 (车辆)',
+        pendingToUseUSD: '订购中 (美元)',
+        pendingToUseVehicles: '订购中 (车辆)',
         balanceUSD: '余额 (美元)',
         balanceVehicles: '余额 (车辆)',
         summary: '概览',
@@ -167,7 +151,7 @@ const translations = {
         loadingProcess: '处理中...',
         loadingGenerate: '生成中...',
         loadingExport: '导出中...',
-        lastUpdate: (sheetName: string, date: string) => `数据来源："${sheetName}" | 同步于：${date}`,
+        lastUpdate: (sheetName: string, date: string) => `数据来源："${sheetName}" | 加载于：${date}`,
         noItemsFound: '未找到任何项目。',
         vehicleAlertTooltip: (count: number) => `注意：电子表格中有 ${count} 个订单的车辆数量为 0。车辆总数可能不正确。`
     }
@@ -183,18 +167,16 @@ const UIElements = {
     kpiContainer: document.getElementById('kpi-container') as HTMLDivElement,
     totalEv: document.getElementById('total-ev') as HTMLParagraphElement,
     usedEv: document.getElementById('used-ev') as HTMLParagraphElement,
+    usedVehiclesEv: document.getElementById('used-vehicles-ev') as HTMLParagraphElement,
     pendingUseEv: document.getElementById('pending-use-ev') as HTMLParagraphElement,
+    pendingUseVehiclesEv: document.getElementById('pending-use-vehicles-ev') as HTMLParagraphElement,
     balanceEv: document.getElementById('balance-ev') as HTMLParagraphElement,
     totalPhev: document.getElementById('total-phev') as HTMLParagraphElement,
     usedPhev: document.getElementById('used-phev') as HTMLParagraphElement,
-    pendingUsePhev: document.getElementById('pending-use-phev') as HTMLParagraphElement,
-    balancePhev: document.getElementById('balance-phev') as HTMLParagraphElement,
-    totalVehiclesEv: document.getElementById('total-vehicles-ev') as HTMLParagraphElement,
-    usedVehiclesEv: document.getElementById('used-vehicles-ev') as HTMLParagraphElement,
-    pendingUseVehiclesEv: document.getElementById('pending-use-vehicles-ev') as HTMLParagraphElement,
-    totalVehiclesPhev: document.getElementById('total-vehicles-phev') as HTMLParagraphElement,
     usedVehiclesPhev: document.getElementById('used-vehicles-phev') as HTMLParagraphElement,
+    pendingUsePhev: document.getElementById('pending-use-phev') as HTMLParagraphElement,
     pendingUseVehiclesPhev: document.getElementById('pending-use-vehicles-phev') as HTMLParagraphElement,
+    balancePhev: document.getElementById('balance-phev') as HTMLParagraphElement,
     totalRequests: document.getElementById('total-requests') as HTMLParagraphElement,
     usedRequests: document.getElementById('used-requests') as HTMLParagraphElement,
     pendingRequests: document.getElementById('pending-requests') as HTMLParagraphElement,
@@ -213,10 +195,6 @@ const UIElements = {
     phevChartCanvas: document.getElementById('phev-chart') as HTMLCanvasElement,
     langPtBtn: document.getElementById('lang-pt-btn') as HTMLButtonElement,
     langZhBtn: document.getElementById('lang-zh-btn') as HTMLButtonElement,
-    evVehicleAlert: document.getElementById('ev-vehicle-alert') as HTMLDivElement,
-    phevVehicleAlert: document.getElementById('phev-vehicle-alert') as HTMLDivElement,
-    evVehicleTooltip: document.getElementById('ev-vehicle-tooltip') as HTMLDivElement,
-    phevVehicleTooltip: document.getElementById('phev-vehicle-tooltip') as HTMLDivElement,
 };
 
 // --- CONSTANTS ---
@@ -230,56 +208,17 @@ let originalData: QuotaData[] = [];
 let evChart: any = null;
 let phevChart: any = null;
 let currentLanguage: 'pt-BR' | 'zh-CN' = 'pt-BR';
-let currentSheetInfo: { name: string, date: string } | null = null; // Date is now string
+let currentSheetInfo: { name: string, date: Date } | null = null;
 
 // Register ChartJS plugins
 Chart.register(ChartDataLabels);
-
-// --- FUNÇÕES DO FIREBASE ---
-const salvarDadosNoFirebase = async (dataToSave: { data: QuotaData[], sheetInfo: { name: string, date: string } | null }) => {
-    try {
-        await db.collection("quoteControl").doc("latestSheet").set(dataToSave);
-        console.log("Dados salvos no Firebase com sucesso!");
-    } catch (e) {
-        console.error("Erro ao salvar dados no Firebase: ", e);
-    }
-};
-
-const escutarMudancasEmTempoReal = () => {
-    db.collection("quoteControl").doc("latestSheet").onSnapshot((doc: any) => {
-        if (doc.exists) {
-            const firestoreData = doc.data();
-            originalData = firestoreData.data || [];
-            currentSheetInfo = firestoreData.sheetInfo || null;
-
-            processAndRenderAll(originalData);
-            
-            // Exibir o dashboard se houver dados
-            UIElements.kpiContainer.classList.remove('hidden');
-            UIElements.dashboardContent.classList.remove('hidden');
-            UIElements.chartsContainer.classList.remove('hidden');
-            UIElements.placeholder.classList.add('hidden');
-            
-            if (currentSheetInfo) {
-                const date = new Date(currentSheetInfo.date);
-                UIElements.lastUpdate.textContent = translations[currentLanguage].lastUpdate(currentSheetInfo.name, date.toLocaleString(currentLanguage));
-            }
-            
-            showToast('toastLoaded', 'success');
-
-        } else {
-            console.log("Nenhum dado encontrado no Firebase. Aguardando upload.");
-            resetUI();
-        }
-    });
-};
-
 
 // --- LANGUAGE & FORMATTING FUNCTIONS ---
 
 function setLanguage(lang: 'pt-BR' | 'zh-CN') {
     currentLanguage = lang;
     
+    // Update button styles
     UIElements.langPtBtn.classList.toggle('bg-blue-600', lang === 'pt-BR');
     UIElements.langPtBtn.classList.toggle('text-white', lang === 'pt-BR');
     UIElements.langPtBtn.classList.toggle('ring-2', lang === 'pt-BR');
@@ -294,13 +233,14 @@ function setLanguage(lang: 'pt-BR' | 'zh-CN') {
     UIElements.langZhBtn.classList.toggle('bg-gray-200', lang !== 'zh-CN');
     UIElements.langZhBtn.classList.toggle('text-gray-700', lang !== 'zh-CN');
 
+    // Update static text from data-lang-key attributes
     const t = translations[currentLanguage];
     document.querySelectorAll('[data-lang-key]').forEach(el => {
         const key = el.getAttribute('data-lang-key') as keyof typeof t;
         if (key && t[key]) {
             const translation = t[key];
             if (typeof translation === 'string') {
-                if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+                 if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
                     el.placeholder = translation;
                 } else {
                     el.textContent = translation;
@@ -311,16 +251,15 @@ function setLanguage(lang: 'pt-BR' | 'zh-CN') {
 
     document.title = t.pageTitle;
 
+    // Re-render dynamic content if data exists
     if (originalData.length > 0) {
         processAndRenderAll(originalData);
         if (currentSheetInfo) {
-            const date = new Date(currentSheetInfo.date);
-            UIElements.lastUpdate.textContent = t.lastUpdate(currentSheetInfo.name, date.toLocaleString(currentLanguage));
+            UIElements.lastUpdate.textContent = t.lastUpdate(currentSheetInfo.name, currentSheetInfo.date.toLocaleString(currentLanguage));
         }
     }
 }
 
-// (O restante das funções: showToast, parseCurrency, formatCurrency, formatNumber... permanecem iguais)
 function showToast(messageKey: keyof typeof translations['pt-BR'], type: 'success' | 'error' = 'success') {
     const message = translations[currentLanguage][messageKey] as string;
     const toast = document.createElement('div');
@@ -375,7 +314,6 @@ function resetUI() {
     UIElements.lastUpdate.textContent = translations[currentLanguage].promptToUpload;
 }
 
-// (renderList, updateCharts, filterAndRenderLists, processAndRenderAll... permanecem praticamente iguais)
 function renderList(container: HTMLElement, items: QuotaData[], isUsed: boolean) {
     container.innerHTML = '';
     const t = translations[currentLanguage];
@@ -551,9 +489,8 @@ function filterAndRenderLists() {
 function processAndRenderAll(data: QuotaData[]) {
     let usedEv = 0, usedPhev = 0;
     let pendingEv = 0, pendingPhev = 0;
-    let totalVehiclesEv = 0, usedVehiclesEv = 0, pendingVehiclesEv = 0;
-    let totalVehiclesPhev = 0, usedVehiclesPhev = 0, pendingVehiclesPhev = 0;
-    let zeroVehicleCount = 0;
+    let usedVehiclesEv = 0, pendingVehiclesEv = 0;
+    let usedVehiclesPhev = 0, pendingVehiclesPhev = 0;
     
     let usedCount = 0;
     let integralCount = 0;
@@ -568,16 +505,6 @@ function processAndRenderAll(data: QuotaData[]) {
         const value = parseCurrency(row['VALOR USD']);
         const vehicleCount = parseInt(String(row['QTD VEÍCULOS'] || '0'));
 
-        if(vehicleCount === 0) {
-            zeroVehicleCount++;
-        }
-
-        if (quoteType === 'EV') {
-            totalVehiclesEv += vehicleCount;
-        } else if (quoteType === 'PHEV') {
-            totalVehiclesPhev += vehicleCount;
-        }
-        
         if (isUsed) {
             if (row.REGISTRATION_TYPE === 'QUOTA') {
                 usedCount++;
@@ -607,23 +534,19 @@ function processAndRenderAll(data: QuotaData[]) {
     // Update KPIs
     UIElements.totalEv.textContent = formatCurrency(QUOTAS.EV);
     UIElements.usedEv.textContent = formatCurrency(usedEv);
+    UIElements.usedVehiclesEv.textContent = formatNumber(usedVehiclesEv);
     UIElements.pendingUseEv.textContent = formatCurrency(pendingEv);
+    UIElements.pendingUseVehiclesEv.textContent = formatNumber(pendingVehiclesEv);
     const balanceEv = QUOTAS.EV - usedEv;
     UIElements.balanceEv.textContent = formatCurrency(balanceEv);
     
     UIElements.totalPhev.textContent = formatCurrency(QUOTAS.PHEV);
     UIElements.usedPhev.textContent = formatCurrency(usedPhev);
+    UIElements.usedVehiclesPhev.textContent = formatNumber(usedVehiclesPhev);
     UIElements.pendingUsePhev.textContent = formatCurrency(pendingPhev);
+    UIElements.pendingUseVehiclesPhev.textContent = formatNumber(pendingVehiclesPhev);
     const balancePhev = QUOTAS.PHEV - usedPhev;
     UIElements.balancePhev.textContent = formatCurrency(balancePhev);
-
-    UIElements.totalVehiclesEv.textContent = formatNumber(totalVehiclesEv);
-    UIElements.usedVehiclesEv.textContent = formatNumber(usedVehiclesEv);
-    UIElements.pendingUseVehiclesEv.textContent = formatNumber(pendingVehiclesEv);
-    
-    UIElements.totalVehiclesPhev.textContent = formatNumber(totalVehiclesPhev);
-    UIElements.usedVehiclesPhev.textContent = formatNumber(usedVehiclesPhev);
-    UIElements.pendingUseVehiclesPhev.textContent = formatNumber(pendingVehiclesPhev);
 
     const pendingCount = data.length - usedCount - integralCount;
     UIElements.totalRequests.textContent = data.length.toString();
@@ -634,30 +557,17 @@ function processAndRenderAll(data: QuotaData[]) {
     UIElements.integralValue.textContent = formatCurrency(integralValue);
     UIElements.integralVehicles.textContent = formatNumber(integralVehicles);
 
-    // Update Vehicle Alert
-    const t = translations[currentLanguage];
-    const alertElements = [UIElements.evVehicleAlert, UIElements.phevVehicleAlert];
-    const tooltipElements = [UIElements.evVehicleTooltip, UIElements.phevVehicleTooltip];
-    if (zeroVehicleCount > 0) {
-        const tooltipText = t.vehicleAlertTooltip(zeroVehicleCount);
-        alertElements.forEach(el => el.classList.remove('hidden'));
-        tooltipElements.forEach(el => el.textContent = tooltipText);
-    } else {
-        alertElements.forEach(el => el.classList.add('hidden'));
-    }
-
     filterAndRenderLists();
     updateCharts(usedEv, balanceEv, usedPhev, balancePhev);
 }
 
 // --- ACTION HANDLERS ---
 function handleRegister(id: number, type: 'QUOTA' | 'INTEGRAL') {
-    const itemIndex = originalData.findIndex(item => item.__id === id);
+     const itemIndex = originalData.findIndex(item => item.__id === id);
     if (itemIndex > -1) {
         originalData[itemIndex]['DATA REGISTRO DI'] = new Date().toLocaleDateString(currentLanguage);
         originalData[itemIndex]['REGISTRATION_TYPE'] = type;
-        // Salva a alteração no Firebase, que irá disparar a atualização da UI
-        salvarDadosNoFirebase({ data: originalData, sheetInfo: currentSheetInfo });
+        processAndRenderAll(originalData);
         showToast('toastRegisterSuccess', 'success');
     } else {
         showToast('toastRegisterError', 'error');
@@ -669,15 +579,13 @@ function handleCancelDI(id: number) {
     if (itemIndex > -1) {
         originalData[itemIndex]['DATA REGISTRO DI'] = null;
         originalData[itemIndex]['REGISTRATION_TYPE'] = null;
-        // Salva a alteração no Firebase, que irá disparar a atualização da UI
-        salvarDadosNoFirebase({ data: originalData, sheetInfo: currentSheetInfo });
+        processAndRenderAll(originalData);
         showToast('toastCancelSuccess', 'success');
     } else {
         showToast('toastRegisterError', 'error');
     }
 }
 
-// (handleExportCSV e o listener do PDF permanecem iguais)
 function handleExportCSV() {
     if (originalData.length === 0) {
         showToast('toastNoDataExport', 'error');
@@ -731,7 +639,6 @@ function handleExportCSV() {
     }
 }
 
-
 // --- EVENT LISTENERS ---
 
 UIElements.fileUpload.addEventListener('change', (event) => {
@@ -743,6 +650,7 @@ UIElements.fileUpload.addEventListener('change', (event) => {
 
     const originalHTML = uploadLabelElement.innerHTML;
     
+    // Set loading state
     uploadLabelElement.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> ${translations[currentLanguage].loadingProcess}`;
     (uploadLabelElement as HTMLLabelElement).style.pointerEvents = 'none';
 
@@ -751,14 +659,18 @@ UIElements.fileUpload.addEventListener('change', (event) => {
         try {
             const data = new Uint8Array(e.target?.result as ArrayBuffer);
             const workbook = XLSX.read(data, { type: 'array' });
-            const sheetName = workbook.SheetNames.find((name: string) => 
+            let sheetName = workbook.SheetNames.find((name: string) => 
                 name.toUpperCase().includes('SHEET1') || name.toUpperCase().includes('PLANILHA1')
             );
 
             if (!sheetName) {
-                const err = new Error("Sheet not found");
-                err.name = 'toastNoSheet';
-                throw err;
+                if (workbook.SheetNames.length > 0) {
+                    sheetName = workbook.SheetNames[0];
+                } else {
+                    const err = new Error("No sheets found in workbook");
+                    err.name = 'toastNoSheet'; // Using existing message for no valid sheets
+                    throw err;
+                }
             }
             
             const jsonData: Omit<QuotaData, '__id' | 'REGISTRATION_TYPE'>[] = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { raw: false, defval: null });
@@ -769,17 +681,21 @@ UIElements.fileUpload.addEventListener('change', (event) => {
                 throw err;
             }
 
-            // Prepara os dados para o Firebase
-            const dataToSave = jsonData.map((row, index) => ({ 
+            originalData = jsonData.map((row, index) => ({ 
                 ...row, 
                 __id: index, 
-                REGISTRATION_TYPE: null
+                REGISTRATION_TYPE: null // Initialize new property
             } as QuotaData));
+            currentSheetInfo = { name: sheetName, date: new Date() };
 
-            const sheetInfoToSave = { name: sheetName, date: new Date().toISOString() };
-
-            // Envia os dados para o Firebase. A atualização da UI ocorrerá pelo listener.
-            salvarDadosNoFirebase({ data: dataToSave, sheetInfo: sheetInfoToSave });
+            processAndRenderAll(originalData);
+            
+            UIElements.kpiContainer.classList.remove('hidden');
+            UIElements.dashboardContent.classList.remove('hidden');
+            UIElements.chartsContainer.classList.remove('hidden');
+            UIElements.placeholder.classList.add('hidden');
+            UIElements.lastUpdate.textContent = translations[currentLanguage].lastUpdate(currentSheetInfo.name, currentSheetInfo.date.toLocaleString(currentLanguage));
+            showToast('toastLoaded', 'success');
 
         } catch (err: any) {
             if (err.name === 'toastNoSheet' || err.name === 'toastEmptySheet') {
@@ -790,6 +706,7 @@ UIElements.fileUpload.addEventListener('change', (event) => {
             console.error("File processing error:", err);
             resetUI();
         } finally {
+            // Restore original state
             uploadLabelElement.innerHTML = originalHTML;
             (uploadLabelElement as HTMLLabelElement).style.pointerEvents = 'auto';
             (event.target as HTMLInputElement).value = '';
@@ -827,7 +744,7 @@ UIElements.exportPdfBtn.addEventListener('click', () => {
     btn.querySelector('span')!.textContent = translations[currentLanguage].loadingGenerate;
     btn.disabled = true;
 
-    html2canvas(UIElements.dashboardContainer, { scale: 2 })
+    html2canvas(UIElements.dashboardContainer, { scale: 2 }) // Increased scale for better quality
         .then((canvas: HTMLCanvasElement) => {
             const imgData = canvas.toDataURL('image/png');
             const { jsPDF } = jspdf;
@@ -864,6 +781,4 @@ UIElements.langZhBtn.addEventListener('click', () => setLanguage('zh-CN'));
 // Initial Load
 document.addEventListener('DOMContentLoaded', () => {
     setLanguage('pt-BR');
-    // Inicia o listener do Firebase para receber dados em tempo real
-    escutarMudancasEmTempoReal();
 });
