@@ -20,6 +20,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
+
 // --- TYPE DEFINITIONS ---
 interface QuotaData {
     __id: number;
@@ -300,6 +301,7 @@ function formatNumber(value: number): string {
 }
 
 // --- UI RENDERING FUNCTIONS ---
+// (As funções renderList, updateCharts, filterAndRenderLists permanecem iguais)
 function resetUI() {
     UIElements.kpiContainer.classList.add('hidden');
     UIElements.dashboardContent.classList.add('hidden');
@@ -310,7 +312,6 @@ function resetUI() {
     UIElements.liSearchInput.value = '';
     UIElements.lastUpdate.textContent = translations[currentLanguage].promptToUpload;
 }
-
 function renderList(container: HTMLElement, items: QuotaData[], isUsed: boolean) {
     container.innerHTML = '';
     const t = translations[currentLanguage];
@@ -340,7 +341,6 @@ function renderList(container: HTMLElement, items: QuotaData[], isUsed: boolean)
         container.appendChild(card);
     });
 }
-
 function updateCharts(usedEv: number, balanceEv: number, usedPhev: number, balancePhev: number) {
     const t = translations[currentLanguage];
     const chartOptions = (total: number) => ({ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' as const }, tooltip: { callbacks: { label: (c:any) => `${c.label}: ${formatCurrency(c.parsed)}` } }, datalabels: { formatter: (v:any) => { const p = (v / total) * 100; return p > 5 ? `${p.toFixed(1)}%` : ''; }, color: '#fff', font: { weight: 'bold' as const } } } });
@@ -349,7 +349,6 @@ function updateCharts(usedEv: number, balanceEv: number, usedPhev: number, balan
     if (phevChart) phevChart.destroy();
     phevChart = new Chart(UIElements.phevChartCanvas, { type: 'doughnut', data: { labels: [t.chartUsed, t.chartBalance], datasets: [{ label: t.chartPHEVQuota, data: [usedPhev, balancePhev], backgroundColor: ['#EF4444', '#3B82F6'] }] }, options: chartOptions(QUOTAS.PHEV) });
 }
-
 function filterAndRenderLists() {
     const searchTerm = UIElements.liSearchInput.value.toLowerCase().trim();
     let pendingList: QuotaData[] = [], usedList: QuotaData[] = [], integralList: QuotaData[] = [];
@@ -367,6 +366,7 @@ function filterAndRenderLists() {
     renderList(UIElements.usedList, usedList, true);
     renderList(UIElements.integralList, integralList, true);
 }
+
 
 function processAndRenderAll(data: QuotaData[]) {
     let usedEv = 0, usedPhev = 0, pendingEv = 0, pendingPhev = 0;
@@ -401,10 +401,12 @@ function processAndRenderAll(data: QuotaData[]) {
     UIElements.usedPhev.textContent = formatCurrency(usedPhev);
     UIElements.pendingUsePhev.textContent = formatCurrency(pendingPhev);
     UIElements.balancePhev.textContent = formatCurrency(QUOTAS.PHEV - usedPhev);
+
     UIElements.usedVehiclesEv.textContent = formatNumber(usedVehiclesEv);
     UIElements.pendingUseVehiclesEv.textContent = formatNumber(pendingVehiclesEv);
     UIElements.usedVehiclesPhev.textContent = formatNumber(usedVehiclesPhev);
     UIElements.pendingUseVehiclesPhev.textContent = formatNumber(pendingVehiclesPhev);
+
     const pendingCount = data.length - usedCount - integralCount;
     UIElements.totalRequests.textContent = data.length.toString();
     UIElements.usedRequests.textContent = usedCount.toString();
