@@ -13,7 +13,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="index.css">
-    <link rel="stylesheet" href="/index.css">
 </head>
 <body class="p-4 md:p-8">
     <div id="dashboard-container" class="max-w-screen-2xl mx-auto">
@@ -42,69 +41,69 @@
 
         <div id="kpi-container" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
             <div class="kpi-card p-4 col-span-1">
-                <h3 class="text-md font-bold text-gray-800 flex items-center mb-2"><i class="fas fa-car-battery mr-3 text-green-500"></i><span data-lang-key="quotaEV">QUOTA EV</span></h3>
-                <div class="grid grid-cols-2 gap-x-4">
-                    <div class="space-y-2 text-right">
-                        <div>
-                            <p class="text-xs font-medium text-gray-500" data-lang-key="totalUSD">Total (USD)</p>
-                            <p id="total-ev" class="text-lg font-bold text-gray-700">$ 0,00</p>
-                        </div>
+                <h3 class="text-md font-bold text-gray-800 flex items-center mb-4"><i class="fas fa-car-battery mr-3 text-green-500"></i><span data-lang-key="quotaEV">QUOTA EV</span></h3>
+                <div class="space-y-3">
+                    <div>
+                        <p class="text-xs font-medium text-gray-500" data-lang-key="totalUSD">Total (USD)</p>
+                        <p id="total-ev" class="text-xl font-bold text-gray-700">US$ 0,00</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
                         <div>
                             <p class="text-xs font-medium text-gray-500" data-lang-key="usedUSD">Utilizado (USD)</p>
-                            <p id="used-ev" class="text-lg font-bold text-red-600">$ 0,00</p>
+                            <p id="used-ev" class="text-xl font-bold text-red-600">US$ 0,00</p>
                         </div>
                         <div>
-                            <p class="text-xs font-medium text-gray-500" data-lang-key="pendingToUseUSD">Pendente de Uso (USD)</p>
-                            <p id="pending-use-ev" class="text-lg font-bold text-orange-500">$ 0,00</p>
-                        </div>
-                        <div class="border-t pt-2 mt-2">
-                            <p class="text-sm font-bold text-gray-500" data-lang-key="balanceUSD">SALDO (USD)</p>
-                            <p id="balance-ev" class="text-xl font-extrabold text-green-600">$ 0,00</p>
+                            <p class="text-xs font-medium text-gray-500" data-lang-key="usedVehicles">Utilizado (Veículos)</p>
+                            <p id="used-vehicles-ev" class="text-xl font-bold text-red-600">0</p>
                         </div>
                     </div>
-                    <div class="space-y-2 text-right">
-                         <div>
-                            <p class="text-xs font-medium text-gray-500" data-lang-key="usedVehicles">Utilizado (Veículos)</p>
-                            <p id="used-vehicles-ev" class="text-lg font-bold text-red-600">0</p>
+                     <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-xs font-medium text-gray-500" data-lang-key="inOrderUSD">Em Pedido (USD)</p>
+                            <p id="pending-use-ev" class="text-xl font-bold text-orange-500">US$ 0,00</p>
                         </div>
-                         <div>
-                            <p class="text-xs font-medium text-gray-500" data-lang-key="pendingToUseVehicles">Pendente de Uso (Veículos)</p>
-                            <p id="pending-use-vehicles-ev" class="text-lg font-bold text-orange-500">0</p>
+                        <div>
+                            <p class="text-xs font-medium text-gray-500" data-lang-key="inOrderVehicles">Em Pedido (Veículos)</p>
+                            <p id="pending-use-vehicles-ev" class="text-xl font-bold text-orange-500">0</p>
                         </div>
+                    </div>
+                    <div class="border-t pt-3 mt-1">
+                        <p class="text-sm font-bold text-gray-500" data-lang-key="balanceUSD">SALDO (USD)</p>
+                        <p id="balance-ev" class="text-xl font-extrabold text-green-600">US$ 0,00</p>
                     </div>
                 </div>
             </div>
 
             <div class="kpi-card p-4 col-span-1">
-                <h3 class="text-md font-bold text-gray-800 flex items-center mb-2"><i class="fas fa-gas-pump mr-3 text-blue-500"></i><span data-lang-key="quotaPHEV">QUOTA PHEV</span></h3>
-                <div class="grid grid-cols-2 gap-x-4">
-                    <div class="space-y-2 text-right">
-                        <div>
-                            <p class="text-xs font-medium text-gray-500" data-lang-key="totalUSD">Total (USD)</p>
-                            <p id="total-phev" class="text-lg font-bold text-gray-700">$ 0,00</p>
-                        </div>
+                <h3 class="text-md font-bold text-gray-800 flex items-center mb-4"><i class="fas fa-gas-pump mr-3 text-blue-500"></i><span data-lang-key="quotaPHEV">QUOTA PHEV</span></h3>
+                 <div class="space-y-3">
+                    <div>
+                        <p class="text-xs font-medium text-gray-500" data-lang-key="totalUSD">Total (USD)</p>
+                        <p id="total-phev" class="text-xl font-bold text-gray-700">US$ 0,00</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
                         <div>
                             <p class="text-xs font-medium text-gray-500" data-lang-key="usedUSD">Utilizado (USD)</p>
-                            <p id="used-phev" class="text-lg font-bold text-red-600">$ 0,00</p>
+                            <p id="used-phev" class="text-xl font-bold text-red-600">US$ 0,00</p>
                         </div>
-                        <div>
-                            <p class="text-xs font-medium text-gray-500" data-lang-key="pendingToUseUSD">Pendente de Uso (USD)</p>
-                            <p id="pending-use-phev" class="text-lg font-bold text-orange-500">$ 0,00</p>
-                        </div>
-                        <div class="border-t pt-2 mt-2">
-                            <p class="text-sm font-bold text-gray-500" data-lang-key="balanceUSD">SALDO (USD)</p>
-                            <p id="balance-phev" class="text-xl font-extrabold text-green-600">$ 0,00</p>
-                        </div>
-                    </div>
-                    <div class="space-y-2 text-right">
                         <div>
                             <p class="text-xs font-medium text-gray-500" data-lang-key="usedVehicles">Utilizado (Veículos)</p>
-                            <p id="used-vehicles-phev" class="text-lg font-bold text-red-600">0</p>
+                            <p id="used-vehicles-phev" class="text-xl font-bold text-red-600">0</p>
+                        </div>
+                    </div>
+                     <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-xs font-medium text-gray-500" data-lang-key="inOrderUSD">Em Pedido (USD)</p>
+                            <p id="pending-use-phev" class="text-xl font-bold text-orange-500">US$ 0,00</p>
                         </div>
                         <div>
-                            <p class="text-xs font-medium text-gray-500" data-lang-key="pendingToUseVehicles">Pendente de Uso (Veículos)</p>
-                            <p id="pending-use-vehicles-phev" class="text-lg font-bold text-orange-500">0</p>
+                            <p class="text-xs font-medium text-gray-500" data-lang-key="inOrderVehicles">Em Pedido (Veículos)</p>
+                            <p id="pending-use-vehicles-phev" class="text-xl font-bold text-orange-500">0</p>
                         </div>
+                    </div>
+                    <div class="border-t pt-3 mt-1">
+                        <p class="text-sm font-bold text-gray-500" data-lang-key="balanceUSD">SALDO (USD)</p>
+                        <p id="balance-phev" class="text-xl font-extrabold text-green-600">US$ 0,00</p>
                     </div>
                 </div>
             </div>
@@ -124,6 +123,7 @@
                     <p id="pending-requests" class="text-2xl font-extrabold text-gray-700">0</p>
                  </div>
             </div>
+
             <div class="kpi-card p-5 col-span-1 space-y-4">
                  <h3 class="text-lg font-bold text-gray-800 flex items-center"><i class="fas fa-file-contract mr-3 text-slate-500"></i><span data-lang-key="integralSummary">Resumo - Reg. Integral</span></h3>
                  <div>
@@ -144,16 +144,17 @@
         <div id="charts-container" class="hidden bg-white p-6 rounded-lg shadow-md mb-8">
             <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center" data-lang-key="quotaVisualization">Visualização das Quotas (USD)</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-                <div class="h-64 mx-auto">
+                <div class="w-64 h-64 mx-auto">
                     <h3 class="text-lg font-semibold text-center text-gray-700 mb-2" data-lang-key="quotaEV">QUOTA EV</h3>
                     <canvas id="ev-chart"></canvas>
                 </div>
-                <div class="h-64 mx-auto">
+                <div class="w-64 h-64 mx-auto">
                     <h3 class="text-lg font-semibold text-center text-gray-700 mb-2" data-lang-key="quotaPHEV">QUOTA PHEV</h3>
                     <canvas id="phev-chart"></canvas>
                 </div>
             </div>
         </div>
+
         <div id="dashboard-content" class="hidden">
             <div class="mb-6 relative">
                  <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -161,6 +162,7 @@
                 </div>
                 <input type="search" id="li-search-input" data-lang-key="filterByLIPO" placeholder="Filtrar por LI ou PO..." class="w-full pl-10 pr-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
+            
             <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div>
                     <h2 class="text-2xl font-bold text-gray-800 mb-4 pb-2 border-b-2 border-gray-300" data-lang-key="pendingOrdersList">Pedidos em Aberto / Pendentes</h2>
@@ -176,15 +178,19 @@
                 </div>
             </main>
         </div>
+        
         <div id="placeholder" class="text-center py-20 bg-white rounded-lg shadow">
             <i class="fas fa-file-invoice-dollar text-6xl text-gray-300 mb-4" aria-hidden="true"></i>
             <h2 class="text-2xl font-semibold text-gray-600" data-lang-key="waitingForFile">Aguardando arquivo...</h2>
             <p class="text-gray-400" data-lang-key="selectFileToStart">Selecione a planilha de prioridade de registro para iniciar.</p>
         </div>
     </div>
+
     <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+    
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
     <script type="module" src="index.tsx"></script>
 </body>
 </html>
