@@ -8,6 +8,7 @@ declare const firebase: any;
 const Chart = (window as any).Chart;
 const ChartDataLabels = (window as any).ChartDataLabels;
 
+
 // --- CONFIGURAÇÃO E INICIALIZAÇÃO DO FIREBASE ---
 const firebaseConfig = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -48,10 +49,8 @@ const translations = {
         quotaEV: 'QUOTA EV',
         quotaPHEV: 'QUOTA PHEV',
         totalUSD: 'Total (USD)',
-        usedUSD: 'Utilizado (USD)',
-        usedVehicles: 'Utilizado (Veículos)',
-        pendingToUseUSD: 'Pendente de Uso (USD)',
-        pendingToUseVehicles: 'Pendente de Uso (Veículos)',
+        usedLabel: 'Utilizado',
+        inOrderLabel: 'Em Pedido',
         balanceUSD: 'SALDO (USD)',
         summary: 'Resumo Geral',
         totalOrders: 'Total de Pedidos na Planilha',
@@ -110,10 +109,8 @@ const translations = {
         quotaEV: '电动汽车配额',
         quotaPHEV: '插电混动车配额',
         totalUSD: '总计 (美元)',
-        usedUSD: '已用 (美元)',
-        usedVehicles: '已用 (车辆)',
-        pendingToUseUSD: '待使用 (美元)',
-        pendingToUseVehicles: '待使用 (车辆)',
+        usedLabel: '已用',
+        inOrderLabel: '订购中',
         balanceUSD: '余额 (美元)',
         summary: '概览',
         totalOrders: '表格订单总数',
@@ -256,18 +253,38 @@ const escutarMudancasEmTempoReal = () => {
 // --- LANGUAGE & FORMATTING FUNCTIONS ---
 function setLanguage(lang: 'pt-BR' | 'zh-CN') {
     currentLanguage = lang;
+    
     UIElements.langPtBtn.classList.toggle('bg-blue-600', lang === 'pt-BR');
     UIElements.langPtBtn.classList.toggle('text-white', lang === 'pt-BR');
+    UIElements.langPtBtn.classList.toggle('ring-2', lang === 'pt-BR');
+    UIElements.langPtBtn.classList.toggle('ring-blue-700', lang === 'pt-BR');
+    UIElements.langPtBtn.classList.toggle('bg-gray-200', lang !== 'pt-BR');
+    UIElements.langPtBtn.classList.toggle('text-gray-700', lang !== 'pt-BR');
+
     UIElements.langZhBtn.classList.toggle('bg-blue-600', lang === 'zh-CN');
     UIElements.langZhBtn.classList.toggle('text-white', lang === 'zh-CN');
+    UIElements.langZhBtn.classList.toggle('ring-2', lang === 'zh-CN');
+    UIElements.langZhBtn.classList.toggle('ring-blue-700', lang === 'zh-CN');
+    UIElements.langZhBtn.classList.toggle('bg-gray-200', lang !== 'zh-CN');
+    UIElements.langZhBtn.classList.toggle('text-gray-700', lang !== 'zh-CN');
+
     const t = translations[currentLanguage];
     document.querySelectorAll('[data-lang-key]').forEach(el => {
         const key = el.getAttribute('data-lang-key') as keyof typeof t;
-        if (key && t[key] && typeof t[key] === 'string') {
-            el.textContent = t[key] as string;
+        if (key && t[key]) {
+            const translation = t[key];
+            if (typeof translation === 'string') {
+                if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+                    el.placeholder = translation;
+                } else {
+                    el.textContent = translation;
+                }
+            }
         }
     });
+
     document.title = t.pageTitle;
+
     if (originalData.length > 0) {
         processAndRenderAll(originalData);
         if (currentSheetInfo) {
@@ -276,32 +293,46 @@ function setLanguage(lang: 'pt-BR' | 'zh-CN') {
         }
     }
 }
+
 function showToast(messageKey: keyof typeof translations['pt-BR'], type: 'success' | 'error' = 'success') {
     const message = translations[currentLanguage][messageKey] as string;
     const toast = document.createElement('div');
     toast.className = `toast p-4 rounded-lg shadow-lg text-white ${type === 'success' ? 'bg-green-500' : 'bg-red-500'}`;
     toast.textContent = message;
     UIElements.toastContainer.appendChild(toast);
-    setTimeout(() => { toast.remove(); }, 5000);
+    setTimeout(() => {
+        toast.remove();
+    }, 5000);
 }
+
 function parseCurrency(value: string | number | null): number {
     if (typeof value === 'number') return value;
     if (typeof value !== 'string' || !value) return 0;
     const cleanedValue = String(value).replace(/[^0-9,.]/g, '');
     const lastComma = cleanedValue.lastIndexOf(',');
     const lastDot = cleanedValue.lastIndexOf('.');
-    if (lastComma > lastDot) return parseFloat(cleanedValue.replace(/\./g, '').replace(',', '.')) || 0;
+    if (lastComma > lastDot) {
+        return parseFloat(cleanedValue.replace(/\./g, '').replace(',', '.')) || 0;
+    }
     return parseFloat(cleanedValue.replace(/,/g, '')) || 0;
 }
+
 function formatCurrency(value: number): string {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'USD' }).format(value);
-}
-function formatNumber(value: number): string {
-    return new Intl.NumberFormat('pt-BR').format(value);
+    const locale = currentLanguage === 'zh-CN' ? 'en-US' : currentLanguage;
+    return new Intl.NumberFormat(locale, { 
+        style: 'currency', 
+        currency: 'USD', 
+        minimumFractionDigits: 2, 
+        maximumFractionDigits: 2 
+    }).format(value);
 }
 
+function formatNumber(value: number): string {
+    return new Intl.NumberFormat(currentLanguage).format(value);
+}
+
+
 // --- UI RENDERING FUNCTIONS ---
-// (As funções renderList, updateCharts, filterAndRenderLists permanecem iguais)
 function resetUI() {
     UIElements.kpiContainer.classList.add('hidden');
     UIElements.dashboardContent.classList.add('hidden');
@@ -312,66 +343,16 @@ function resetUI() {
     UIElements.liSearchInput.value = '';
     UIElements.lastUpdate.textContent = translations[currentLanguage].promptToUpload;
 }
-function renderList(container: HTMLElement, items: QuotaData[], isUsed: boolean) {
-    container.innerHTML = '';
-    const t = translations[currentLanguage];
-    if (items.length === 0) {
-        container.innerHTML = `<p class="text-center text-gray-500 p-4">${t.noItemsFound}</p>`;
-        return;
-    }
-    items.forEach(item => {
-        const quoteType = (item['QUOTE'] || '').toUpperCase();
-        const borderColor = quoteType === 'EV' ? 'border-green-500' : 'border-blue-500';
-        const card = document.createElement('div');
-        card.className = `item-card p-3 ${borderColor}`;
-        const poNumber = item['PO '] || item['PO'] || t.noPO;
-        const project = item['PROJECT'] || t.noProject;
-        const liNumber = item['LI NUMBER'] || t.notAvailable;
-        const registroDI = item['DATA REGISTRO DI'];
-        let status = isUsed && registroDI ? (item.REGISTRATION_TYPE === 'INTEGRAL' ? t.statusIntegral(registroDI) : t.statusRegistered(registroDI)) : t.statusPending;
-        const value = parseCurrency(item['VALOR USD']);
-        const vehicleCount = parseInt(String(item['QTD VEÍCULOS'] || 0));
-        let actionButton = '';
-        if (!isUsed && (quoteType === 'EV' || quoteType === 'PHEV')) {
-            actionButton = `<div class="mt-2 text-right flex items-center justify-end space-x-2"><button class="integral-di-btn text-xs bg-gray-500 hover:bg-gray-600 text-white font-bold py-1 px-3 rounded-full" data-id="${item.__id}">${t.registerIntegral}</button><button class="register-di-btn text-xs bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded-full" data-id="${item.__id}"><i class="fas fa-check mr-1"></i> ${t.registerDI}</button></div>`;
-        } else if (isUsed) {
-            actionButton = `<div class="mt-2 text-right"><button class="cancel-di-btn text-xs bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded-full" data-id="${item.__id}"><i class="fas fa-times mr-1"></i> ${t.cancelRegister}</button></div>`;
-        }
-        card.innerHTML = `<div class="flex justify-between items-start"><div><p class="text-xs font-bold text-gray-500">${poNumber}</p><p class="font-semibold text-gray-800">${project}</p><p class="text-xs text-gray-600 mt-1"><b>LI:</b> ${liNumber}</p><p class="text-xs text-gray-600"><b>Status:</b> ${status}</p></div><div class="text-right flex-shrink-0 ml-2"><p class="text-lg font-bold ${isUsed ? 'text-red-600' : 'text-gray-700'}">${formatCurrency(value)}</p><div class="mt-1"><span class="text-xs font-semibold px-2 py-1 rounded-full ${borderColor.replace('border', 'bg').replace('-500', '-100')} ${borderColor.replace('border', 'text')}">${quoteType || t.noQuota}</span><span class="text-xs font-semibold px-2 py-1 rounded-full bg-gray-100 text-gray-700 ml-1">${vehicleCount} ${t.vehicles}</span></div></div></div>${actionButton}`;
-        container.appendChild(card);
-    });
-}
-function updateCharts(usedEv: number, balanceEv: number, usedPhev: number, balancePhev: number) {
-    const t = translations[currentLanguage];
-    const chartOptions = (total: number) => ({ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' as const }, tooltip: { callbacks: { label: (c:any) => `${c.label}: ${formatCurrency(c.parsed)}` } }, datalabels: { formatter: (v:any) => { const p = (v / total) * 100; return p > 5 ? `${p.toFixed(1)}%` : ''; }, color: '#fff', font: { weight: 'bold' as const } } } });
-    if (evChart) evChart.destroy();
-    evChart = new Chart(UIElements.evChartCanvas, { type: 'doughnut', data: { labels: [t.chartUsed, t.chartBalance], datasets: [{ label: t.chartEVQuota, data: [usedEv, balanceEv], backgroundColor: ['#EF4444', '#22C55E'] }] }, options: chartOptions(QUOTAS.EV) });
-    if (phevChart) phevChart.destroy();
-    phevChart = new Chart(UIElements.phevChartCanvas, { type: 'doughnut', data: { labels: [t.chartUsed, t.chartBalance], datasets: [{ label: t.chartPHEVQuota, data: [usedPhev, balancePhev], backgroundColor: ['#EF4444', '#3B82F6'] }] }, options: chartOptions(QUOTAS.PHEV) });
-}
-function filterAndRenderLists() {
-    const searchTerm = UIElements.liSearchInput.value.toLowerCase().trim();
-    let pendingList: QuotaData[] = [], usedList: QuotaData[] = [], integralList: QuotaData[] = [];
-    originalData.forEach(item => {
-        const isUsed = item['DATA REGISTRO DI'] && String(item['DATA REGISTRO DI']).trim() !== '';
-        if (isUsed) { (item.REGISTRATION_TYPE === 'INTEGRAL' ? integralList : usedList).push(item); } else { pendingList.push(item); }
-    });
-    const filterFn = (item: QuotaData) => (String(item['PO '] || item['PO'] || '').toLowerCase().includes(searchTerm) || String(item['LI NUMBER'] || '').toLowerCase().includes(searchTerm));
-    if (searchTerm) {
-        pendingList = pendingList.filter(filterFn);
-        usedList = usedList.filter(filterFn);
-        integralList = integralList.filter(filterFn);
-    }
-    renderList(UIElements.pendingList, pendingList, false);
-    renderList(UIElements.usedList, usedList, true);
-    renderList(UIElements.integralList, integralList, true);
-}
-
 
 function processAndRenderAll(data: QuotaData[]) {
-    let usedEv = 0, usedPhev = 0, pendingEv = 0, pendingPhev = 0;
-    let usedVehiclesEv = 0, pendingVehiclesEv = 0, usedVehiclesPhev = 0, pendingVehiclesPhev = 0;
-    let usedCount = 0, integralCount = 0, integralValue = 0, integralVehicles = 0;
+    let usedEv = 0, usedPhev = 0;
+    let pendingEv = 0, pendingPhev = 0;
+    let usedVehiclesEv = 0, pendingVehiclesEv = 0;
+    let usedVehiclesPhev = 0, pendingVehiclesPhev = 0;
+    let usedCount = 0;
+    let integralCount = 0;
+    let integralValue = 0;
+    let integralVehicles = 0;
 
     data.forEach(row => {
         const isUsed = row['DATA REGISTRO DI'] && String(row['DATA REGISTRO DI']).trim() !== '';
@@ -393,36 +374,100 @@ function processAndRenderAll(data: QuotaData[]) {
         }
     });
 
+    const t = translations[currentLanguage];
     UIElements.totalEv.textContent = formatCurrency(QUOTAS.EV);
     UIElements.usedEv.textContent = formatCurrency(usedEv);
     UIElements.pendingUseEv.textContent = formatCurrency(pendingEv);
     UIElements.balanceEv.textContent = formatCurrency(QUOTAS.EV - usedEv);
+    
     UIElements.totalPhev.textContent = formatCurrency(QUOTAS.PHEV);
     UIElements.usedPhev.textContent = formatCurrency(usedPhev);
     UIElements.pendingUsePhev.textContent = formatCurrency(pendingPhev);
     UIElements.balancePhev.textContent = formatCurrency(QUOTAS.PHEV - usedPhev);
 
-    UIElements.usedVehiclesEv.textContent = formatNumber(usedVehiclesEv);
-    UIElements.pendingUseVehiclesEv.textContent = formatNumber(pendingVehiclesEv);
-    UIElements.usedVehiclesPhev.textContent = formatNumber(usedVehiclesPhev);
-    UIElements.pendingUseVehiclesPhev.textContent = formatNumber(pendingVehiclesPhev);
+    UIElements.usedVehiclesEv.textContent = `${formatNumber(usedVehiclesEv)} ${t.vehicles}`;
+    UIElements.pendingUseVehiclesEv.textContent = `${formatNumber(pendingVehiclesEv)} ${t.vehicles}`;
+    
+    UIElements.usedVehiclesPhev.textContent = `${formatNumber(usedVehiclesPhev)} ${t.vehicles}`;
+    UIElements.pendingUseVehiclesPhev.textContent = `${formatNumber(pendingVehiclesPhev)} ${t.vehicles}`;
 
     const pendingCount = data.length - usedCount - integralCount;
-    UIElements.totalRequests.textContent = data.length.toString();
-    UIElements.usedRequests.textContent = usedCount.toString();
-    UIElements.pendingRequests.textContent = pendingCount.toString();
-    UIElements.integralRequests.textContent = integralCount.toString();
+    UIElements.totalRequests.textContent = formatNumber(data.length);
+    UIElements.usedRequests.textContent = formatNumber(usedCount);
+    UIElements.pendingRequests.textContent = formatNumber(pendingCount);
+    
+    UIElements.integralRequests.textContent = formatNumber(integralCount);
     UIElements.integralValue.textContent = formatCurrency(integralValue);
     UIElements.integralVehicles.textContent = formatNumber(integralVehicles);
+
     filterAndRenderLists();
     updateCharts(usedEv, QUOTAS.EV - usedEv, usedPhev, QUOTAS.PHEV - usedPhev);
 }
+
+function renderList(container: HTMLElement, items: QuotaData[], isUsed: boolean) {
+    container.innerHTML = '';
+    const t = translations[currentLanguage];
+    if (items.length === 0) {
+        container.innerHTML = `<p class="text-center text-gray-500 p-4">${t.noItemsFound}</p>`;
+        return;
+    }
+    items.forEach(item => {
+        const quoteType = (item['QUOTE'] || '').toUpperCase();
+        const borderColor = quoteType === 'EV' ? 'border-green-500' : 'border-blue-500';
+        const card = document.createElement('div');
+        card.className = `item-card p-3 ${borderColor}`;
+
+        const poNumber = item['PO '] || item['PO'] || t.noPO;
+        const project = item['PROJECT'] || t.noProject;
+        const liNumber = item['LI NUMBER'] || t.notAvailable;
+        const registroDI = item['DATA REGISTRO DI'];
+        let status = isUsed && registroDI ? (item.REGISTRATION_TYPE === 'INTEGRAL' ? t.statusIntegral(registroDI) : t.statusRegistered(registroDI)) : t.statusPending;
+        const value = parseCurrency(item['VALOR USD']);
+        const vehicleCount = parseInt(String(item['QTD VEÍCULOS'] || 0));
+        let actionButton = '';
+        if (!isUsed && (quoteType === 'EV' || quoteType === 'PHEV')) {
+            actionButton = `<div class="mt-2 text-right flex items-center justify-end space-x-2"><button class="integral-di-btn text-xs bg-gray-500 hover:bg-gray-600 text-white font-bold py-1 px-3 rounded-full" data-id="${item.__id}">${t.registerIntegral}</button><button class="register-di-btn text-xs bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded-full" data-id="${item.__id}"><i class="fas fa-check mr-1"></i> ${t.registerDI}</button></div>`;
+        } else if (isUsed) {
+            actionButton = `<div class="mt-2 text-right"><button class="cancel-di-btn text-xs bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded-full" data-id="${item.__id}"><i class="fas fa-times mr-1"></i> ${t.cancelRegister}</button></div>`;
+        }
+        card.innerHTML = `<div class="flex justify-between items-start"><div><p class="text-xs font-bold text-gray-500">${poNumber}</p><p class="font-semibold text-gray-800">${project}</p><p class="text-xs text-gray-600 mt-1"><b>LI:</b> ${liNumber}</p><p class="text-xs text-gray-600"><b>Status:</b> ${status}</p></div><div class="text-right flex-shrink-0 ml-2"><p class="text-lg font-bold ${isUsed ? 'text-red-600' : 'text-gray-700'}">${formatCurrency(value)}</p><div class="mt-1"><span class="text-xs font-semibold px-2 py-1 rounded-full ${borderColor.replace('border', 'bg').replace('-500', '-100')} ${borderColor.replace('border', 'text')}">${quoteType || t.noQuota}</span><span class="text-xs font-semibold px-2 py-1 rounded-full bg-gray-100 text-gray-700 ml-1">${vehicleCount} ${t.vehicles}</span></div></div></div>${actionButton}`;
+        container.appendChild(card);
+    });
+}
+
+function updateCharts(usedEv: number, balanceEv: number, usedPhev: number, balancePhev: number) {
+    const t = translations[currentLanguage];
+    const chartOptions = (total: number) => ({ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' as const }, tooltip: { callbacks: { label: (c:any) => `${c.label}: ${formatCurrency(c.parsed)}` } }, datalabels: { formatter: (v:any, c:any) => { if (total === 0) return '0%'; const p = (v / total) * 100; return p > 5 ? `${p.toFixed(1)}%` : ''; }, color: '#fff', font: { weight: 'bold' as const } } } });
+    if (evChart) evChart.destroy();
+    evChart = new Chart(UIElements.evChartCanvas, { type: 'doughnut', data: { labels: [t.chartUsed, t.chartBalance], datasets: [{ label: t.chartEVQuota, data: [usedEv, balanceEv], backgroundColor: ['#EF4444', '#22C55E'] }] }, options: chartOptions(QUOTAS.EV) });
+    if (phevChart) phevChart.destroy();
+    phevChart = new Chart(UIElements.phevChartCanvas, { type: 'doughnut', data: { labels: [t.chartUsed, t.chartBalance], datasets: [{ label: t.chartPHEVQuota, data: [usedPhev, balancePhev], backgroundColor: ['#EF4444', '#3B82F6'] }] }, options: chartOptions(QUOTAS.PHEV) });
+}
+
+function filterAndRenderLists() {
+    const searchTerm = UIElements.liSearchInput.value.toLowerCase().trim();
+    let pendingList: QuotaData[] = [], usedList: QuotaData[] = [], integralList: QuotaData[] = [];
+    originalData.forEach(item => {
+        const isUsed = item['DATA REGISTRO DI'] && String(item['DATA REGISTRO DI']).trim() !== '';
+        if (isUsed) { (item.REGISTRATION_TYPE === 'INTEGRAL' ? integralList : usedList).push(item); } else { pendingList.push(item); }
+    });
+    const filterFn = (item: QuotaData) => (String(item['PO '] || item['PO'] || '').toLowerCase().includes(searchTerm) || String(item['LI NUMBER'] || '').toLowerCase().includes(searchTerm));
+    if (searchTerm) {
+        pendingList = pendingList.filter(filterFn);
+        usedList = usedList.filter(filterFn);
+        integralList = integralList.filter(filterFn);
+    }
+    renderList(UIElements.pendingList, pendingList, false);
+    renderList(UIElements.usedList, usedList, true);
+    renderList(UIElements.integralList, integralList, true);
+}
+
 
 // --- ACTION HANDLERS & EVENT LISTENERS ---
 function handleRegister(id: number, type: 'QUOTA' | 'INTEGRAL') {
     const itemIndex = originalData.findIndex(item => item.__id === id);
     if (itemIndex > -1) {
-        originalData[itemIndex]['DATA REGISTRO DI'] = new Date().toLocaleDateString('pt-BR');
+        originalData[itemIndex]['DATA REGISTRO DI'] = new Date().toLocaleDateString(currentLanguage);
         originalData[itemIndex]['REGISTRATION_TYPE'] = type;
         salvarDadosNoFirebase({ data: originalData, sheetInfo: currentSheetInfo });
         showToast('toastRegisterSuccess', 'success');
@@ -445,12 +490,22 @@ UIElements.fileUpload.addEventListener('change', (event) => {
         try {
             const data = new Uint8Array(e.target?.result as ArrayBuffer);
             const workbook = XLSX.read(data, { type: 'array' });
-            const sheetName = workbook.SheetNames[0];
-            const jsonData: any[] = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+            const sheetName = workbook.SheetNames.find(name => name.toUpperCase().includes('SHEET1') || name.toUpperCase().includes('PLANILHA1'));
+            if (!sheetName) { const err = new Error("Sheet not found"); err.name = 'toastNoSheet'; throw err; }
+            const jsonData: any[] = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { raw: false, defval: null });
+            if (jsonData.length === 0) { const err = new Error("Sheet is empty"); err.name = 'toastEmptySheet'; throw err; }
             const dataToSave = jsonData.map((row, index) => ({ ...row, __id: index, REGISTRATION_TYPE: null }));
             const sheetInfoToSave = { name: sheetName, date: new Date().toISOString() };
             salvarDadosNoFirebase({ data: dataToSave, sheetInfo: sheetInfoToSave });
-        } catch (err) { console.error(err); }
+        } catch (err: any) {
+            if (err.name === 'toastNoSheet' || err.name === 'toastEmptySheet') {
+                showToast(err.name as keyof typeof translations['pt-BR'], 'error');
+            } else {
+                showToast('toastProcessError', 'error');
+            }
+            console.error("File processing error:", err);
+            resetUI();
+        }
     };
     reader.readAsArrayBuffer(file);
 });
@@ -460,12 +515,17 @@ const listClickListener = (event: MouseEvent) => {
     const integralBtn = target.closest('.integral-di-btn');
     const cancelBtn = target.closest('.cancel-di-btn');
     const id = parseInt(registerBtn?.dataset.id || integralBtn?.dataset.id || cancelBtn?.dataset.id || '-1');
-    if (registerBtn) handleRegister(id, 'QUOTA');
-    if (integralBtn) handleRegister(id, 'INTEGRAL');
-    if (cancelBtn) handleCancelDI(id);
+    if (id > -1) {
+        if (registerBtn) handleRegister(id, 'QUOTA');
+        if (integralBtn) handleRegister(id, 'INTEGRAL');
+        if (cancelBtn) handleCancelDI(id);
+    }
 };
-['pendingList', 'usedList', 'integralList'].forEach(id => UIElements[id as keyof typeof UIElements]?.addEventListener('click', listClickListener));
+['pendingList', 'usedList', 'integralList'].forEach(id => (UIElements[id as keyof typeof UIElements] as HTMLElement)?.addEventListener('click', listClickListener));
 UIElements.liSearchInput.addEventListener('input', filterAndRenderLists);
+UIElements.exportCsvBtn.addEventListener('click', handleExportCSV);
+UIElements.langPtBtn.addEventListener('click', () => setLanguage('pt-BR'));
+UIElements.langZhBtn.addEventListener('click', () => setLanguage('zh-CN'));
 document.addEventListener('DOMContentLoaded', () => {
     setLanguage('pt-BR');
     escutarMudancasEmTempoReal();
