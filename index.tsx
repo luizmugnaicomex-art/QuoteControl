@@ -2,7 +2,7 @@
 declare var XLSX: any;
 declare var jspdf: any;
 declare var html2canvas: any;
-declare const firebase: any;
+declare const firebase: any; // Adicionado para o Firebase
 
 // Resolve ReferenceError para bibliotecas CDN
 const Chart = (window as any).Chart;
@@ -69,7 +69,7 @@ const translations = {
         integralOrdersList: 'Pedidos com Registro Integral',
         waitingForFile: 'Aguardando arquivo...',
         selectFileToStart: 'Selecione a planilha de prioridade de registro para iniciar.',
-        toastLoaded: 'Dashboard de quotas carregado!',
+        toastLoaded: 'Dashboard de quotas sincronizado!',
         toastNoSheet: 'Nenhuma planilha válida (ex: "Sheet1" ou "Planilha1") foi encontrada.',
         toastEmptySheet: 'A planilha está vazia.',
         toastProcessError: 'Erro ao processar arquivo.',
@@ -102,7 +102,7 @@ const translations = {
         noItemsFound: 'Nenhum item encontrado.',
     },
     'zh-CN': {
-        // ... (traduções para Chinês)
+        // ... (traduções em Chinês)
     }
 };
 
@@ -161,11 +161,10 @@ let currentSheetInfo: { name: string, date: string } | null = null;
 
 Chart.register(ChartDataLabels);
 
-// --- FIREBASE FUNCTIONS ---
+// --- FUNÇÕES DO FIREBASE ---
 const salvarDadosNoFirebase = async (dataToSave: { data: QuotaData[], sheetInfo: { name: string, date: string } | null }) => {
     try {
         await db.collection("quoteControl").doc("latestSheet").set(dataToSave);
-        console.log("Dados salvos no Firebase com sucesso!");
     } catch (e) {
         console.error("Erro ao salvar dados no Firebase: ", e);
     }
@@ -177,16 +176,18 @@ const escutarMudancasEmTempoReal = () => {
             const firestoreData = doc.data();
             originalData = firestoreData.data || [];
             currentSheetInfo = firestoreData.sheetInfo || null;
+
             processAndRenderAll(originalData);
+            
             UIElements.kpiContainer.classList.remove('hidden');
             UIElements.dashboardContent.classList.remove('hidden');
             UIElements.chartsContainer.classList.remove('hidden');
             UIElements.placeholder.classList.add('hidden');
+            
             if (currentSheetInfo) {
                 const date = new Date(currentSheetInfo.date);
                 UIElements.lastUpdate.textContent = translations[currentLanguage].lastUpdate(currentSheetInfo.name, date.toLocaleString(currentLanguage));
             }
-            showToast('toastLoaded', 'success');
         } else {
             console.log("Nenhum dado encontrado no Firebase. Aguardando upload.");
             resetUI();
@@ -194,18 +195,21 @@ const escutarMudancasEmTempoReal = () => {
     });
 };
 
+
 // --- LANGUAGE & FORMATTING FUNCTIONS ---
 function setLanguage(lang: 'pt-BR' | 'zh-CN') {
     currentLanguage = lang;
+    
     UIElements.langPtBtn.classList.toggle('bg-blue-600', lang === 'pt-BR');
     UIElements.langPtBtn.classList.toggle('text-white', lang === 'pt-BR');
     UIElements.langZhBtn.classList.toggle('bg-blue-600', lang === 'zh-CN');
     UIElements.langZhBtn.classList.toggle('text-white', lang === 'zh-CN');
+
     const t = translations[currentLanguage];
     document.querySelectorAll('[data-lang-key]').forEach(el => {
         const key = el.getAttribute('data-lang-key') as keyof typeof t;
+        const element = el as HTMLElement;
         if (key && t[key] && typeof t[key] === 'string') {
-            const element = el as HTMLElement;
             if (element.tagName === 'INPUT') {
                 (element as HTMLInputElement).placeholder = t[key] as string;
             } else {
@@ -213,7 +217,9 @@ function setLanguage(lang: 'pt-BR' | 'zh-CN') {
             }
         }
     });
+
     document.title = t.pageTitle;
+
     if (originalData.length > 0) {
         processAndRenderAll(originalData);
         if (currentSheetInfo) {
@@ -229,7 +235,9 @@ function showToast(messageKey: keyof typeof translations['pt-BR'], type: 'succes
     toast.className = `toast p-4 rounded-lg shadow-lg text-white ${type === 'success' ? 'bg-green-500' : 'bg-red-500'}`;
     toast.textContent = message;
     UIElements.toastContainer.appendChild(toast);
-    setTimeout(() => { toast.remove(); }, 5000);
+    setTimeout(() => {
+        toast.remove();
+    }, 5000);
 }
 
 function parseCurrency(value: string | number | null): number {
@@ -238,7 +246,9 @@ function parseCurrency(value: string | number | null): number {
     const cleanedValue = String(value).replace(/[^0-9,.]/g, '');
     const lastComma = cleanedValue.lastIndexOf(',');
     const lastDot = cleanedValue.lastIndexOf('.');
-    if (lastComma > lastDot) return parseFloat(cleanedValue.replace(/\./g, '').replace(',', '.')) || 0;
+    if (lastComma > lastDot) {
+        return parseFloat(cleanedValue.replace(/\./g, '').replace(',', '.')) || 0;
+    }
     return parseFloat(cleanedValue.replace(/,/g, '')) || 0;
 }
 
@@ -250,6 +260,7 @@ function formatCurrency(value: number): string {
 function formatNumber(value: number): string {
     return new Intl.NumberFormat(currentLanguage).format(value);
 }
+
 
 // --- UI RENDERING FUNCTIONS ---
 function resetUI() {
@@ -400,25 +411,32 @@ UIElements.fileUpload.addEventListener('change', (event) => {
     const file = (event.target as HTMLInputElement).files?.[0];
     if (!file) return;
     const reader = new FileReader();
+    const uploadLabelElement = document.querySelector('label[for="file-upload"]')!;
+    const originalHTML = uploadLabelElement.innerHTML;
+    uploadLabelElement.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> ${translations[currentLanguage].loadingProcess}`;
+    (uploadLabelElement as HTMLLabelElement).style.pointerEvents = 'none';
+
     reader.onload = (e) => {
         try {
             const data = new Uint8Array(e.target?.result as ArrayBuffer);
             const workbook = XLSX.read(data, { type: 'array' });
-            const sheetName = workbook.SheetNames.find(name => name.toUpperCase().includes('SHEET1') || name.toUpperCase().includes('PLANILHA1'));
-            if (!sheetName) { const err = new Error("Sheet not found"); err.name = 'toastNoSheet'; throw err; }
+            const sheetName = workbook.SheetNames.find(name => name.toUpperCase().includes('SHEET1') || name.toUpperCase().includes('PLANILHA1')) || workbook.SheetNames[0];
+            if (!sheetName) { throw new Error("No sheets found"); }
             const jsonData: any[] = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { raw: false, defval: null });
             if (jsonData.length === 0) { const err = new Error("Sheet is empty"); err.name = 'toastEmptySheet'; throw err; }
+            
             const dataToSave = jsonData.map((row, index) => ({ ...row, __id: index, REGISTRATION_TYPE: null }));
             const sheetInfoToSave = { name: sheetName, date: new Date().toISOString() };
+            
             salvarDadosNoFirebase({ data: dataToSave, sheetInfo: sheetInfoToSave });
+
         } catch (err: any) {
-            if (err.name === 'toastNoSheet' || err.name === 'toastEmptySheet') {
-                showToast(err.name as keyof typeof translations['pt-BR'], 'error');
-            } else {
-                showToast('toastProcessError', 'error');
-            }
-            console.error("File processing error:", err);
+            showToast(err.name === 'toastEmptySheet' ? 'toastEmptySheet' : 'toastProcessError', 'error');
             resetUI();
+        } finally {
+            uploadLabelElement.innerHTML = originalHTML;
+            (uploadLabelElement as HTMLLabelElement).style.pointerEvents = 'auto';
+            (event.target as HTMLInputElement).value = '';
         }
     };
     reader.readAsArrayBuffer(file);
@@ -440,12 +458,7 @@ UIElements.liSearchInput.addEventListener('input', filterAndRenderLists);
 UIElements.exportCsvBtn.addEventListener('click', handleExportCSV);
 UIElements.langPtBtn.addEventListener('click', () => setLanguage('pt-BR'));
 UIElements.langZhBtn.addEventListener('click', () => setLanguage('zh-CN'));
-document.addEventListener('DOMContentLoaded', () => {
-    setLanguage('pt-BR');
-    escutarMudancasEmTempoReal();
-});
 
-// Helper function to handle PDF export
 function handleExportPDF() {
     const btn = UIElements.exportPdfBtn;
     const originalText = btn.querySelector('span')!.textContent;
@@ -482,3 +495,8 @@ function handleExportPDF() {
         });
 }
 UIElements.exportPdfBtn.addEventListener('click', handleExportPDF);
+
+document.addEventListener('DOMContentLoaded', () => {
+    setLanguage('pt-BR');
+    escutarMudancasEmTempoReal();
+});
